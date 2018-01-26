@@ -4,6 +4,10 @@ import json
 v = sys.version_info[0]
 
 CHILDREN = 'children'
+caseType=1
+year = 2015
+court = 3565
+caseFile = "case%d_%d.txt"%(caseType, year)
 
 def visit(arrs = []):
     for obj in arrs:
@@ -17,7 +21,7 @@ def visit(arrs = []):
 
 
 if __name__ == '__main__':
-    f = open('case.txt')
+    f = open(caseFile)
     content = f.read()
     f.close()
     if v == 2:

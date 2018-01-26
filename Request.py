@@ -28,15 +28,15 @@ class ItslawRequester:
     '''
 
     #same id same condition court%2B7%2B5%2CcaseType%2B2%2B10%2CtrialYear%2B2014%2B7
-    detail_url_tpl = 'https://www.itslaw.com/api/v1/detail?timestamp=1505136306015&judgementId=$0&area=1&sortType=1&conditions=court%2B$5%2B5&caseType%2B$4%2B10&trialYear%2B$3%2B7'
+    detail_url_tpl = 'https://www.itslaw.com/api/v1/detail?timestamp=1505136306015&judgementId=$0&area=1&sortType=1&conditions=court%2B$5%2B5%2CcaseType%2B$4%2B10%2CtrialYear%2B$3%2B7'
     detail_ref_tpl = 'https://www.itslaw.com/detail?judgementId=$0&area=1&index=$1&count=$2&sortType=1&conditions=trialYear%2B$3%2B7&conditions=caseType%2B$4%2B10&conditions=court%2B$5%2B5'
 
     #only needs
-    case_ref_tpl = 'https://www.itslaw.com/search?searchMode=judgements&sortType=1&conditions=trialYear%2B$0%2B7%2B$0&conditions=caseType%2B$1%2B10%2Bxxxxxx'
     case_url_tpl = 'https://www.itslaw.com/api/v1/caseFiles?startIndex=0&countPerPage=2&sortType=1&conditions=trialYear%2B$0%2B7%2B$0&conditions=caseType%2B$1%2B10%2Bxxxxxx'
+    case_ref_tpl = 'https://www.itslaw.com/search?searchMode=judgements&sortType=1&conditions=trialYear%2B$0%2B7%2B$0&conditions=caseType%2B$1%2B10%2Bxxxxxx'
 
-    list_url_tpl = case_url_tpl + "&court%2B$5%2B5%2Bxxxxxxxxx"
-
+    list_url_tpl = case_url_tpl + "&conditions=court%2B$2%2B5%2Bxxxxxxxxx"
+    list_ref_tpl = case_ref_tpl + "&conditions=court%2B$2%2B5%2Bxxxxxxxxx&searchView=text"
 
     case_type = '2'
     year = '2014'
@@ -65,6 +65,13 @@ class ItslawRequester:
         print(case_url)
         print(case_ref)
         return self.__req(case_url, case_ref)
+
+    def get_list(self, court_id):
+        list_url = self.list_url_tpl.replace('$0', self.year).replace('$1', self.case_type).replace('$2', court_id)
+        list_ref = self.list_ref_tpl.replace('$0', self.year).replace('$1', self.case_type).replace('$2', court_id)
+        print(list_url)
+        print(list_ref)
+        return self.__req(list_url, list_ref)
 
     def __decompress(self, response):
         data = response.read() #reads
