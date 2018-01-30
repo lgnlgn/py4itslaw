@@ -12,6 +12,7 @@ else:
 
 conditions = {'trialYear':'%2B$0%2B7%2B$0', 'caseType':'%2B$1%2B10%2Bxxxxxx', 'searchView':'text', 'court':'%2B$5%2B52C'}
 
+
 class ItslawRequester:
     head = '''
     Accept:application/json, text/plain, */*
@@ -27,11 +28,11 @@ class ItslawRequester:
     User-Agent:Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.104 Safari/537.36 Core/1.53.3226.400 QQBrowser/9.6.11681.400
     '''
 
-    #same id same condition court%2B7%2B5%2CcaseType%2B2%2B10%2CtrialYear%2B2014%2B7
+    # same id same condition court%2B7%2B5%2CcaseType%2B2%2B10%2CtrialYear%2B2014%2B7
     detail_url_tpl = 'https://www.itslaw.com/api/v1/detail?timestamp=1505136306015&judgementId=$0&area=1&sortType=1&conditions=court%2B$5%2B5%2CcaseType%2B$4%2B10%2CtrialYear%2B$3%2B7'
     detail_ref_tpl = 'https://www.itslaw.com/detail?judgementId=$0&area=1&index=$1&count=$2&sortType=1&conditions=trialYear%2B$3%2B7&conditions=caseType%2B$4%2B10&conditions=court%2B$5%2B5'
 
-    #only needs
+    # only needs
     case_url_tpl = 'https://www.itslaw.com/api/v1/caseFiles?startIndex=0&countPerPage=2&sortType=1&conditions=trialYear%2B$0%2B7%2B$0&conditions=caseType%2B$1%2B10%2Bxxxxxx'
     case_ref_tpl = 'https://www.itslaw.com/search?searchMode=judgements&sortType=1&conditions=trialYear%2B$0%2B7%2B$0&conditions=caseType%2B$1%2B10%2Bxxxxxx'
 
@@ -48,11 +49,13 @@ class ItslawRequester:
         self.year = str(year)
 
     def get_detail(self, index, count, doc_id, court_id):
-        timestamp = str(time.time()).replace('.','')
+        index, count, doc_id, court_id = map(str, (index, count, doc_id, court_id))
+        assert all([x.isdigit() for x in [index, count,court_id]])
+        timestamp = str(time.time() - 5).replace('.','')
         # detail_url = self.detail_url_tpl % (doc_id, self.year, self.case_type, court_id)
-        detail_url = self.detail_url_tpl.replace('$0', doc_id).replace('$3', self.year).replace('$4', self.case_type).replace('$5', court_id)
+        detail_url = self.detail_url_tpl.replace('$0', doc_id).replace('$3', self.year).replace('$4', self.case_type).replace('$5', court_id).replace("1505136306015", timestamp)
 
-        #detail_ref = self.detail_ref_tpl % (doc_id, index, count, self.year, self.case_type, court_id)
+        # detail_ref = self.detail_ref_tpl % (doc_id, index, count, self.year, self.case_type, court_id)
         detail_ref = self.detail_ref_tpl.replace('$0', doc_id).replace('$1', index).replace('$2', count).replace('$3', self.year).replace('$4', self.case_type).replace('$5', court_id)
 
         print(detail_ref)

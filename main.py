@@ -7,18 +7,20 @@ import json
 
 data_dir = os.getcwd()
 COURT_MAX = 3568
+LINES_PER_BLOCK = 100
 court_start = 1
 
-crawling_info = {'court_id':0,'total_count': -1, 'finished_idx': 0, 'next_idx':0, 'next_docid': ''}
-
+crawling_info = {'court_id': 0,'total_count': -1, 'finished_idx': 0, 'next_idx': 0, 'next_docid': ''}
+verbose = True
 
 
 def process_argv():
+    global data_dir
     argvs = len(sys.argv)
     if argvs < 3 or argvs > 4:
         sys.stdout("python main.py <year> <caseType> [data_dir]")
         sys.stdout("<caseType> : 1 = min, 2 = xing; default data_dir is './' ")
-        return None,None
+        return None, None
     else:
         year = sys.argv[1]
         case_type = sys.argv[2]
@@ -45,29 +47,56 @@ def main():
 
     court_id = get_last_court(working_dir)
     while court_id <= COURT_MAX:
-        if court_id == 0 : # only happens at the first time
+        if court_id == 0:        # only happens at the first time
             create_info(working_dir, court_id + 1 )
             court_id += 1
         info = read_info(working_dir, court_id)
-        if info['total_count'] == -1 :
+        if info['total_count'] == -1:
             info = prepare_crawling(spider, court_id)
-            continue_crawl(info)
+            continue_crawl(spider, info)
 
-        elif (info['total_count'] == info['finished_idx'] ):
+        elif info['total_count'] == info['finished_idx']:  # already finished
             pass
         else:
             continue_crawl(info)
         court_id += 1
-    # new court -> start
-    # new court -> stop
-    # continuous -> start
-    # continuous & last -> stop
 
 
+def continue_crawl(spider, info, working_dir):
+    court_id = info['court_id']
+    next_idx = info['next_idx']
+    total_count = info['total_count']
+    next_docid = info['next_docid']
+    while next_idx < total_count:
+        content = spider.get_detail(next_idx, total_count, next_docid, court_id )
+        doc = json.loads(content)
+        next_docid = doc['data']['fullJudegment']['nextId']
 
-def continue_crawl(info):
-    # TODO
-    pass
+        write_down(working_dir + os.sep + str(court_id), content, next_idx)
+        info = update_info(working_dir, info, next_docid)
+
+        if verbose:
+            doc = json.loads(content)
+            title = doc['data']['fullJudegment']['title']
+            sys.stdout.write(str(next_idx) + "\t" + title)
+
+
+def update_info(writing_dir, info, next_docid):
+    info['next_docid'] = next_docid
+    info['next_idx'] += 1
+    info['finished_idx'] += 1
+    f = open(writing_dir + os.sep + "info.txt", 'w')
+    f.write(str(info))
+    f.close()
+    return info
+
+
+def write_down(writing_dir, content, next_idx):
+    block_id = next_idx / LINES_PER_BLOCK
+    f = open(writing_dir + os.sep + str(block_id), 'a')
+    f.write(content + '\n')
+    f.close()
+
 
 def get_last_court(working_dir):
     """
@@ -84,6 +113,7 @@ def get_last_court(working_dir):
 
     return info
 
+
 def create_info(working_dir, court_id):
     if not os.path.isfile:
         ci = {}
@@ -93,6 +123,7 @@ def create_info(working_dir, court_id):
         f.write(str(ci))
         f.close()
 
+
 def read_info(working_dir, court_id):
     """ reads from info.txt"""
     if not os.path.isfile:
@@ -101,10 +132,6 @@ def read_info(working_dir, court_id):
     cc = eval(f.read())
     f.close()
     return cc
-##    if cc['total_count'] == 0 or cc['total_count'] == cc['finished_idx']: ##end
-##        return -1,''
-##    else:
-##        return cc['next_idx'], cc['next_docid']
 
 
 def prepare_crawling(spider, court_id):
@@ -123,9 +150,7 @@ def prepare_crawling(spider, court_id):
     return info
 
 
-
 if __name__ == '__main__':
-    working_dir = data_dir + os.sep + year + os.sep + case_type
-    os.makedirs(working_dir)
+    pass
 
 
