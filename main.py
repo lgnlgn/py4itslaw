@@ -18,21 +18,21 @@ def process_argv():
     global data_dir
     argvs = len(sys.argv)
     if argvs < 3 or argvs > 4:
-        sys.stdout("python main.py <year> <caseType> [data_dir]")
-        sys.stdout("<caseType> : 1 = min, 2 = xing; default data_dir is './' ")
+        sys.stdout.write("python main.py <year> <caseType> [data_dir]")
+        sys.stdout.write("<caseType> : 1 = min, 2 = xing; default data_dir is './' ")
         return None, None
     else:
         year = sys.argv[1]
         case_type = sys.argv[2]
         if len(year) != 4 or not year.isdigit() or year[0] != '2':
-            sys.stdout("<year> must be an integer and greater than 2000 ")
+            sys.stdout.write("<year> must be an integer and greater than 2000 ")
             return None,None
         if len(case_type) != 1 or not case_type.isdigit():
-            sys.stdout("<caseType> : 1 = min, 2 = xing;")
+            sys.stdout.write("<caseType> : 1 = min, 2 = xing;")
             return None,None
         if argvs == 4:
             data_dir = sys.argv[3]
-            sys.stdout(" set data_dir => " + data_dir)
+            sys.stdout.write(" set data_dir => " + data_dir)
         return year, case_type
 
 
@@ -48,9 +48,10 @@ def main():
     court_id = get_last_court(working_dir)
     while court_id <= COURT_MAX:
         if court_id == 0:        # only happens at the first time
+            os.mkdir(working_dir + os.sep + str(court_start))
             sys.stdout.write(" first time of [%d , %d]" %(year, case_type))
             create_info(working_dir, court_id + 1 )
-            court_id += 1
+            court_id = court_start
         info = read_info(working_dir, court_id)
         if info is None:         # new court
             sys.stdout.write(" new court :%d " %( case_type))
@@ -106,12 +107,14 @@ def get_last_court(working_dir):
     """
         get max_court_id & create a new info.txt
     """
+
     courts = os.listdir(working_dir)
     if len(courts) == 0:
-        os.mkdir(working_dir + os.sep + str(court_start)) # create first court's dir
+        return 0
+        # os.mkdir(working_dir + os.sep + str(court_start)) # create first court's dir
     # get last court
-    max_court_id = max(map(int,  os.listdir(working_dir)))   # check again without else
-    return max_court_id if max_court_id else 0
+    return max(map(int, courts))   # check again without else
+    # return max_court_id if max_court_id else 0
 
 
 def create_info(working_dir, court_id):
@@ -154,6 +157,6 @@ def prepare_crawl(spider, court_id):
 
 
 if __name__ == '__main__':
-    pass
+    main()
 
 
