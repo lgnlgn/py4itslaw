@@ -48,17 +48,21 @@ def main():
     court_id = get_last_court(working_dir)
     while court_id <= COURT_MAX:
         if court_id == 0:        # only happens at the first time
+            sys.stdout.write(" first time of [%d , %d]" %(year, case_type))
             create_info(working_dir, court_id + 1 )
             court_id += 1
         info = read_info(working_dir, court_id)
+        if info is None:         # new court
+            sys.stdout.write(" new court :%d " %( case_type))
+            create_info(working_dir, court_id )
         if info['total_count'] == -1:
-            info = prepare_crawling(spider, court_id)
-            continue_crawl(spider, info)
+            info = prepare_crawl(spider, court_id) # get list
+            continue_crawl(spider, info)           # start crawling from info
 
         elif info['total_count'] == info['finished_idx']:  # already finished
             pass
         else:
-            continue_crawl(info)
+            continue_crawl(info)                   # continue crawling from info
         court_id += 1
 
 
@@ -102,20 +106,17 @@ def get_last_court(working_dir):
     """
         get max_court_id & create a new info.txt
     """
-
     courts = os.listdir(working_dir)
     if len(courts) == 0:
-        os.mkdir(working_dir + os.sep + str(court_start)) #create first court
+        os.mkdir(working_dir + os.sep + str(court_start)) # create first court's dir
     # get last court
     max_court_id = max(map(int,  os.listdir(working_dir)))   # check again without else
-
-    info = read_info(working_dir, max_court_id)
-
-    return info
+    return max_court_id if max_court_id else 0
 
 
 def create_info(working_dir, court_id):
-    if not os.path.isfile:
+    info_path = working_dir + os.sep + str(court_id) + os.sep + "info.txt"
+    if not os.path.isfile(info_path):
         ci = {}
         ci.update(crawling_info)
         ci['court_id'] = court_id
@@ -124,18 +125,20 @@ def create_info(working_dir, court_id):
         f.close()
 
 
+
 def read_info(working_dir, court_id):
     """ reads from info.txt"""
-    if not os.path.isfile:
+    info_path = working_dir + os.sep + str(court_id) + os.sep + "info.txt"
+    if not os.path.isfile(info_path):
         return None
-    f = open(working_dir + os.sep + str(court_id) + os.sep + "info.txt")
+    f = open(info_path)
     cc = eval(f.read())
     f.close()
     return cc
 
 
-def prepare_crawling(spider, court_id):
-
+def prepare_crawl(spider, court_id):
+    sys.stdout.write(" =>  get_list :" + str(court_id))
     list_result = spider.get_list(court_id)
     doc = json.loads(list_result)
     total_count = doc['data']['searchResult']['totalCount']
