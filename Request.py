@@ -50,7 +50,7 @@ class ItslawRequester:
 
     def get_detail(self, index, count, doc_id, court_id):
         index, count, doc_id, court_id = map(str, (index, count, doc_id, court_id))
-        assert all([x.isdigit() for x in [index, count,court_id]])
+        assert all([x.isdigit() for x in [index, count, court_id]])
         timestamp = str(time.time() - 5).replace('.','')
         # detail_url = self.detail_url_tpl % (doc_id, self.year, self.case_type, court_id)
         detail_url = self.detail_url_tpl.replace('$0', doc_id).replace('$3', self.year).replace('$4', self.case_type).replace('$5', court_id).replace("1505136306015", timestamp)
@@ -58,8 +58,8 @@ class ItslawRequester:
         # detail_ref = self.detail_ref_tpl % (doc_id, index, count, self.year, self.case_type, court_id)
         detail_ref = self.detail_ref_tpl.replace('$0', doc_id).replace('$1', index).replace('$2', count).replace('$3', self.year).replace('$4', self.case_type).replace('$5', court_id)
 
-        print(detail_ref)
-        print(detail_url)
+        #print(detail_ref)
+        #print(detail_url)
         return self.__req(detail_url, detail_ref)
 
     def get_case(self):
@@ -70,6 +70,7 @@ class ItslawRequester:
         return self.__req(case_url, case_ref)
 
     def get_list(self, court_id):
+        court_id = str(court_id)
         list_url = self.list_url_tpl.replace('$0', self.year).replace('$1', self.case_type).replace('$2', court_id)
         list_ref = self.list_ref_tpl.replace('$0', self.year).replace('$1', self.case_type).replace('$2', court_id)
         print(list_url)
@@ -90,7 +91,7 @@ class ItslawRequester:
     def __req(self, url, ref):
         heade = dict(self.send_headers)
         heade['Referer'] = ref
-        print(heade)
+        #print(heade)
         req = ul.Request(url, headers= heade)
         resp = ul.urlopen(req)
         html = self.__decompress(resp)

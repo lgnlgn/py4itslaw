@@ -18,21 +18,21 @@ def process_argv():
     global data_dir
     argvs = len(sys.argv)
     if argvs < 3 or argvs > 4:
-        sys.stdout.write("python main.py <year> <caseType> [data_dir]")
-        sys.stdout.write("<caseType> : 1 = min, 2 = xing; default data_dir is './' ")
+        sys.stdout.write("python main.py <year> <caseType> [data_dir]\n")
+        sys.stdout.write("<caseType> : 1 = min, 2 = xing; default data_dir is './' \n")
         return None, None
     else:
         year = sys.argv[1]
         case_type = sys.argv[2]
         if len(year) != 4 or not year.isdigit() or year[0] != '2':
-            sys.stdout.write("<year> must be an integer and greater than 2000 ")
+            sys.stdout.write("<year> must be an integer and greater than 2000 \n")
             return None,None
         if len(case_type) != 1 or not case_type.isdigit():
-            sys.stdout.write("<caseType> : 1 = min, 2 = xing;")
+            sys.stdout.write("<caseType> : 1 = min, 2 = xing;\n")
             return None,None
         if argvs == 4:
             data_dir = sys.argv[3]
-            sys.stdout.write(" set data_dir => " + data_dir)
+            sys.stdout.write(" set data_dir => " + data_dir + "\n")
         return year, case_type
 
 
@@ -41,7 +41,8 @@ def main():
     if year is None or case_type is None:
         return
     working_dir = data_dir + os.sep + year + os.sep + case_type
-    os.makedirs(working_dir)
+    if not os.path.isdir(working_dir):
+        os.makedirs(working_dir)
 
     spider = ItslawRequester(case_type, year)
 
@@ -49,15 +50,16 @@ def main():
     while court_id <= COURT_MAX:
         if court_id == 0:        # only happens at the first time
             os.mkdir(working_dir + os.sep + str(court_start))
-            sys.stdout.write(" first time of [%d , %d]" %(year, case_type))
+            sys.stdout.write(" first time of [%s , %s]\n" %(year, case_type))
             create_info(working_dir, court_id + 1 )
             court_id = court_start
         info = read_info(working_dir, court_id)
         if info is None:         # new court
-            sys.stdout.write(" new court :%d " %( case_type))
+            sys.stdout.write(" new court : %d  \n" %( court_id ))
             create_info(working_dir, court_id )
         if info['total_count'] == -1:
             info = prepare_crawl(spider, court_id) # get list
+
             continue_crawl(spider, info)           # start crawling from info
 
         elif info['total_count'] == info['finished_idx']:  # already finished
@@ -72,21 +74,24 @@ def continue_crawl(spider, info, working_dir):
     next_idx = info['next_idx']
     total_count = info['total_count']
     next_docid = info['next_docid']
+    update_info(working_dir, info, next_docid)
     while next_idx < total_count:
         content = spider.get_detail(next_idx, total_count, next_docid, court_id )
         doc = json.loads(content)
         next_docid = doc['data']['fullJudegment']['nextId']
 
         write_down(working_dir + os.sep + str(court_id), content, next_idx)
-        info = update_info(working_dir, info, next_docid)
+        info = update_info(working_dir, info, next_docid) # set next_docid into info;
 
         if verbose:
             doc = json.loads(content)
             title = doc['data']['fullJudegment']['title']
-            sys.stdout.write(str(next_idx) + "\t" + title)
+            sys.stdout.write(str(next_idx) + "\t" + title +"\n")
 
+        next_idx += 1
 
 def update_info(writing_dir, info, next_docid):
+    """updates info; +1 to idx then save {} to info.txt"""
     info['next_docid'] = next_docid
     info['next_idx'] += 1
     info['finished_idx'] += 1
@@ -118,12 +123,15 @@ def get_last_court(working_dir):
 
 
 def create_info(working_dir, court_id):
-    info_path = working_dir + os.sep + str(court_id) + os.sep + "info.txt"
+    court_dir = working_dir + os.sep + str(court_id)
+    info_path = court_dir + os.sep + "info.txt"
+    if not os.path.isdir(court_dir):
+        os.mkdir(court_dir)   # ensure dir exits
     if not os.path.isfile(info_path):
         ci = {}
         ci.update(crawling_info)
         ci['court_id'] = court_id
-        f = open(working_dir + os.sep + str(court_id) + os.sep + "info.txt")
+        f = open(info_path, 'w')
         f.write(str(ci))
         f.close()
 
@@ -131,8 +139,9 @@ def create_info(working_dir, court_id):
 
 def read_info(working_dir, court_id):
     """ reads from info.txt"""
-    info_path = working_dir + os.sep + str(court_id) + os.sep + "info.txt"
-    if not os.path.isfile(info_path):
+    court_dir = working_dir + os.sep + str(court_id)
+    info_path = court_dir + os.sep + "info.txt"
+    if not os.path.isdir(court_dir) or not os.path.isfile(info_path):
         return None
     f = open(info_path)
     cc = eval(f.read())
@@ -141,7 +150,7 @@ def read_info(working_dir, court_id):
 
 
 def prepare_crawl(spider, court_id):
-    sys.stdout.write(" =>  get_list :" + str(court_id))
+    sys.stdout.write(" =>  get_list :" + str(court_id) + "\n")
     list_result = spider.get_list(court_id)
     doc = json.loads(list_result)
     total_count = doc['data']['searchResult']['totalCount']
