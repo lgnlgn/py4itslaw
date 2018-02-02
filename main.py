@@ -2,20 +2,25 @@
 
 import sys
 import os
-from Request import ItslawRequester
 import json
+import time
+from Request import ItslawRequester
+from optparse import OptionParser
 
 data_dir = os.getcwd()
-COURT_MAX = 3568
+
 LINES_PER_BLOCK = 100
 court_start = 1
-
+court_end = 3568
+year = 2015
+case_type=1
 crawling_info = {'court_id': 0,'total_count': -1, 'finished_idx': 0, 'next_idx': 0, 'next_docid': ''}
 verbose = True
 
 
 def process_argv():
-    global data_dir
+    global court_start, court_end, verbose, data_dir
+
     argvs = len(sys.argv)
     if argvs < 3 or argvs > 4:
         sys.stdout.write("python main.py <year> <caseType> [data_dir]\n")
@@ -35,6 +40,29 @@ def process_argv():
             sys.stdout.write(" set data_dir => " + data_dir + "\n")
         return year, case_type
 
+
+def parse_argv():
+    usage = ".py [-y <year>][-t <caseType>][-d [dir]][-s [courtStart]][-e [courtEnd]][-v]"
+    parser= OptionParser(usage)
+    parser.add_option("-d", "--dir",action="store", metavar="DIR",type="string", dest="data_dir", default = ".", help="data directory for saving [default = .]")
+    parser.add_option("-v", action="store_true", dest="verbose", help="set it to print crawling detail")
+    parser.add_option("-y","--year",action = "store",type="int",dest = "year", metavar="YEAR",  help="set year, e.g. 2015")
+    parser.add_option("-t","--case",action = "store", type="choice",dest = "case_type", choices = ['1','2','3','4'], metavar="CASETYPE",  help="set caseType, in [1,2,3,4], 1 = min, 2 = xing")
+    parser.add_option("-s","--start",action = "store",default = 1,type="int",dest = "court_start", metavar="COURT_START" ,help="set court_id STARTS from , [default = 1]")
+    parser.add_option("-s","--end",action = "store", default = 3568, type="int",dest = "court_end", metavar="COURT_END", help="set court_id ENDS from , [default = 3568]")
+
+    global court_start, court_end, verbose, data_dir
+    (options, args) = parser.parse_args()
+    court_start = options.court_start
+    court_end= options.court_end
+    case_type = options.case_type
+    year = options.year
+    verbose = options.verbose
+    data_dir = options.data_dir
+    if year > time.gmtime()[0] or year < 2008:
+        sys.stderr.write('year format error! allow integer between [2008, now] \n')
+        return None, None
+    return case_type, year
 
 def main():
     year, case_type = process_argv()
