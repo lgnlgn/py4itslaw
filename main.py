@@ -18,56 +18,77 @@ crawling_info = {'court_id': 0,'total_count': -1, 'finished_idx': 0, 'next_idx':
 verbose = True
 
 
-def process_argv():
-    global court_start, court_end, verbose, data_dir
-
-    argvs = len(sys.argv)
-    if argvs < 3 or argvs > 4:
-        sys.stdout.write("python main.py <year> <caseType> [data_dir]\n")
-        sys.stdout.write("<caseType> : 1 = min, 2 = xing; default data_dir is './' \n")
-        return None, None
-    else:
-        year = sys.argv[1]
-        case_type = sys.argv[2]
-        if len(year) != 4 or not year.isdigit() or year[0] != '2':
-            sys.stdout.write("<year> must be an integer and greater than 2000 \n")
-            return None,None
-        if len(case_type) != 1 or not case_type.isdigit():
-            sys.stdout.write("<caseType> : 1 = min, 2 = xing;\n")
-            return None,None
-        if argvs == 4:
-            data_dir = sys.argv[3]
-            sys.stdout.write(" set data_dir => " + data_dir + "\n")
-        return year, case_type
+# def process_argv():
+#     global court_start, court_end, verbose, data_dir
+#
+#     argvs = len(sys.argv)
+#     if argvs < 3 or argvs > 4:
+#         sys.stdout.write("python main.py <year> <caseType> [data_dir]\n")
+#         sys.stdout.write("<caseType> : 1 = min, 2 = xing; default data_dir is './' \n")
+#         return None, None
+#     else:
+#         year = sys.argv[1]
+#         case_type = sys.argv[2]
+#         if len(year) != 4 or not year.isdigit() or year[0] != '2':
+#             sys.stdout.write("<year> must be an integer and greater than 2000 \n")
+#             return None,None
+#         if len(case_type) != 1 or not case_type.isdigit():
+#             sys.stdout.write("<caseType> : 1 = min, 2 = xing;\n")
+#             return None,None
+#         if argvs == 4:
+#             data_dir = sys.argv[3]
+#             sys.stdout.write(" set data_dir => " + data_dir + "\n")
+#         return year, case_type
 
 
 def parse_argv():
-    usage = ".py [-y <year>][-t <caseType>][-d [dir]][-s [courtStart]][-e [courtEnd]][-v]"
+    usage = "main.py [-y <year>][-t <caseType>][-d [dir]][-s [courtStart]][-e [courtEnd]][-v]"
+
     parser= OptionParser(usage)
-    parser.add_option("-d", "--dir",action="store", metavar="DIR",type="string", dest="data_dir", default = ".", help="data directory for saving [default = .]")
-    parser.add_option("-v", action="store_true", dest="verbose", help="set it to print crawling detail")
+    parser.add_option("-d", "--dir",action="store", metavar="DIR",type="string", dest="data_dir", help="data directory for saving [default = .]")
+    parser.add_option("-v", action="store_true", dest="verbose", default=False,help="set it to print crawling detail")
     parser.add_option("-y","--year",action = "store",type="int",dest = "year", metavar="YEAR",  help="set year, e.g. 2015")
     parser.add_option("-t","--case",action = "store", type="choice",dest = "case_type", choices = ['1','2','3','4'], metavar="CASETYPE",  help="set caseType, in [1,2,3,4], 1 = min, 2 = xing")
     parser.add_option("-s","--start",action = "store",default = 1,type="int",dest = "court_start", metavar="COURT_START" ,help="set court_id STARTS from , [default = 1]")
-    parser.add_option("-s","--end",action = "store", default = 3568, type="int",dest = "court_end", metavar="COURT_END", help="set court_id ENDS from , [default = 3568]")
+    parser.add_option("-e","--end",action = "store", default = 3568, type="int",dest = "court_end", metavar="COURT_END", help="set court_id ENDS from , [default = 3568]")
 
-    global court_start, court_end, verbose, data_dir
+    if len(sys.argv) == 1:
+        parser.print_help()
+
+    global court_start, court_end, verbose, data_dir, year, case_type
     (options, args) = parser.parse_args()
     court_start = options.court_start
     court_end= options.court_end
     case_type = options.case_type
     year = options.year
     verbose = options.verbose
-    data_dir = options.data_dir
-    if year > time.gmtime()[0] or year < 2008:
-        sys.stderr.write('year format error! allow integer between [2008, now] \n')
-        return None, None
-    return case_type, year
+    data_dir = os.getcwd() if options.data_dir is None else options.data_dir
+    if year is None or year > time.gmtime()[0] or year < 2008:
+        sys.stderr.write('<year> format error! Allows integer between [2008, now] \n')
+        return [None] * 6
+    if court_end > 3568 or court_end < 0:
+        sys.stderr.write('court_end value error! it must between [1, 3568] \n')
+        return [None] * 6
+    return court_start, court_end, verbose, data_dir, year, case_type
+
+
+def debug_args():
+    print("court_start\t", court_start)
+    print("court_end\t", court_end)
+    print("verbose\t", verbose)
+    print("data_dir\t", data_dir)
+    print("year\t", year)
+    print("case_type\t", case_type)
+    sys.exit(0)
+
 
 def main():
-    year, case_type = process_argv()
-    if year is None or case_type is None:
-        return
+    court_start, court_end, verbose, data_dir, year, case_type = parse_argv()
+    if year is None or case_type is None or court_end is None:
+        exit(0)
+
+    debug_args()
+
     working_dir = data_dir + os.sep + year + os.sep + case_type
     if not os.path.isdir(working_dir):
         os.makedirs(working_dir)
@@ -75,7 +96,7 @@ def main():
     spider = ItslawRequester(case_type, year)
 
     court_id = get_last_court(working_dir)
-    while court_id <= COURT_MAX:
+    while court_id <= court_end:
         if court_id == 0:        # only happens at the first time
             os.mkdir(working_dir + os.sep + str(court_start))
             sys.stdout.write(" first time of [%s , %s]\n" %(year, case_type))
@@ -117,6 +138,7 @@ def continue_crawl(spider, info, working_dir):
             sys.stdout.write(str(next_idx) + "\t" + title +"\n")
 
         next_idx += 1
+
 
 def update_info(writing_dir, info, next_docid):
     """updates info; +1 to idx then save {} to info.txt"""
