@@ -73,8 +73,8 @@ class ItslawRequester:
         court_id = str(court_id)
         list_url = self.list_url_tpl.replace('$0', self.year).replace('$1', self.case_type).replace('$2', court_id)
         list_ref = self.list_ref_tpl.replace('$0', self.year).replace('$1', self.case_type).replace('$2', court_id)
-        print(list_url)
-        print(list_ref)
+        # print(list_url)
+        # print(list_ref)
         return self.__req(list_url, list_ref)
 
     def __decompress(self, response):

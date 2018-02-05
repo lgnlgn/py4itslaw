@@ -87,9 +87,7 @@ def main():
     if year is None or case_type is None or court_end is None:
         exit(0)
 
-    debug_args()
-
-    working_dir = data_dir + os.sep + year + os.sep + case_type
+    working_dir = data_dir + os.sep + str(year) + os.sep + str(case_type)
     if not os.path.isdir(working_dir):
         os.makedirs(working_dir)
 
@@ -106,9 +104,9 @@ def main():
         if info is None:         # new court
             sys.stdout.write(" new court : %d  \n" %( court_id ))
             create_info(working_dir, court_id )
+            info = read_info(working_dir, court_id)
         if info['total_count'] == -1:
             info = prepare_crawl(spider, court_id) # get list
-
             continue_crawl(spider, info)           # start crawling from info
 
         elif info['total_count'] == info['finished_idx']:  # already finished
@@ -184,6 +182,7 @@ def create_info(working_dir, court_id):
         f = open(info_path, 'w')
         f.write(str(ci))
         f.close()
+
 
 
 
