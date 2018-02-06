@@ -96,23 +96,25 @@ def main():
     court_id = get_last_court(working_dir)
     while court_id <= court_end:
         if court_id == 0:        # only happens at the first time
-            os.mkdir(working_dir + os.sep + str(court_start))
             sys.stdout.write(" first time of [%s , %s]\n" %(year, case_type))
-            create_info(working_dir, court_id + 1 )
-            court_id = court_start
+##            os.mkdir(working_dir + os.sep + str(court_start))
+            court_id = court_start   #go to next loop
+            continue
         info = read_info(working_dir, court_id)
         if info is None:         # new court
             sys.stdout.write(" new court : %d  \n" %( court_id ))
             create_info(working_dir, court_id )
-            info = read_info(working_dir, court_id)
+            continue
+##            info = read_info(working_dir, court_id)
+
         if info['total_count'] == -1:
             info = prepare_crawl(spider, court_id) # get list
-            continue_crawl(spider, info)           # start crawling from info
-
+            flush_info(working_dir, info)
+            continue_crawl(spider, info, working_dir)           # start crawling from info
         elif info['total_count'] == info['finished_idx']:  # already finished
             pass
         else:
-            continue_crawl(info)                   # continue crawling from info
+            continue_crawl(spider, info, working_dir)           # continue crawling from info
         court_id += 1
 
 
@@ -121,32 +123,42 @@ def continue_crawl(spider, info, working_dir):
     next_idx = info['next_idx']
     total_count = info['total_count']
     next_docid = info['next_docid']
-    update_info(working_dir, info, next_docid)
-    while next_idx < total_count:
+##    update_info(working_dir, info, next_docid)
+    while next_idx <= total_count:
         content = spider.get_detail(next_idx, total_count, next_docid, court_id )
         doc = json.loads(content)
-        next_docid = doc['data']['fullJudegment']['nextId']
-
         write_down(working_dir + os.sep + str(court_id), content, next_idx)
-        info = update_info(working_dir, info, next_docid) # set next_docid into info;
 
+        next_docid = doc['data']['fullJudgement'].get('nextId')
+        if next_docid is None:
+            sys.stdout.write("%d\tfinished ! #docs:  %d \n" %(court_id, total_count))
+            next_docid = ''   #set to null
+
+        info = update_info(info, next_docid) # set next_docid into info;
+        flush_info(working_dir, info)
         if verbose:
-            doc = json.loads(content)
-            title = doc['data']['fullJudegment']['title']
+            title = doc['data']['fullJudgement']['title']
             sys.stdout.write(str(next_idx) + "\t" + title +"\n")
 
         next_idx += 1
 
 
-def update_info(writing_dir, info, next_docid):
+def update_info( info, next_docid):
     """updates info; +1 to idx then save {} to info.txt"""
     info['next_docid'] = next_docid
     info['next_idx'] += 1
     info['finished_idx'] += 1
-    f = open(writing_dir + os.sep + "info.txt", 'w')
+##    court_id = info['court_id']
+##    f = open(writing_dir + os.sep + str(court_id) + os.sep + "info.txt", 'w')
+##    f.write(str(info))
+##    f.close()
+    return info
+
+def flush_info(writing_dir, info):
+    court_id = info['court_id']
+    f = open(writing_dir + os.sep + str(court_id) + os.sep + "info.txt", 'w')
     f.write(str(info))
     f.close()
-    return info
 
 
 def write_down(writing_dir, content, next_idx):
@@ -166,7 +178,7 @@ def get_last_court(working_dir):
         return 0
         # os.mkdir(working_dir + os.sep + str(court_start)) # create first court's dir
     # get last court
-    return max(map(int, courts))   # check again without else
+    return max(map(int, filter(str.isdigit, courts)))   # check again without else
     # return max_court_id if max_court_id else 0
 
 
@@ -179,10 +191,7 @@ def create_info(working_dir, court_id):
         ci = {}
         ci.update(crawling_info)
         ci['court_id'] = court_id
-        f = open(info_path, 'w')
-        f.write(str(ci))
-        f.close()
-
+        flush_info(working_dir, ci)
 
 
 
