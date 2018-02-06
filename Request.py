@@ -42,11 +42,14 @@ class ItslawRequester:
     case_type = '2'
     year = '2014'
 
-    send_headers = dict([head.strip().split(":", 1) for head in head.strip().split('\n')])
+    send_headers = dict()
 
     def __init__(self, case_type, year):
         self.case_type = str(case_type)
         self.year = str(year)
+        with open('headers.txt') as f:
+            self.head = f.read()
+        self.send_headers = dict([h.strip().split(":", 1) for h in self.head.strip().split('\n')])
 
     def get_detail(self, index, count, doc_id, court_id):
         index, count, doc_id, court_id = map(str, (index, count, doc_id, court_id))
@@ -78,14 +81,14 @@ class ItslawRequester:
         return self.__req(list_url, list_ref)
 
     def __decompress(self, response):
-        data = response.read() #reads
+        data = response.read() # reads
         if response.info().get('Content-Encoding') == 'gzip':
             if v == 2:
                 buf = StringIO(data)
                 f = gzip.GzipFile(fileobj=buf)
                 data = f.read()
-            else :
-                data = gzip.decompress(data)
+            else:
+                data = gzip.decompress(data).decode("utf-8")
         return data
 
     def __req(self, url, ref):
