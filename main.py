@@ -16,7 +16,7 @@ year = 2015
 case_type=1
 crawling_info = {'court_id': 0,'total_count': -1, 'finished_idx': 0, 'next_idx': 0, 'next_docid': ''}
 verbose = True
-
+interval = 500
 
 
 
@@ -30,11 +30,12 @@ def parse_argv():
     parser.add_option("-t","--case",action = "store", type="choice",dest = "case_type", choices = ['1','2','3','4'], metavar="CASETYPE",  help="set caseType, in [1,2,3,4], 1 = min, 2 = xing")
     parser.add_option("-s","--start",action = "store",default = 1,type="int",dest = "court_start", metavar="COURT_START" ,help="set court_id STARTS from , [default = 1]")
     parser.add_option("-e","--end",action = "store", default = 3568, type="int",dest = "court_end", metavar="COURT_END", help="set court_id ENDS from , [default = 3568]")
+    parser.add_option("-i","--interval",action = "store", default = 500, type="int",dest = "interval", metavar="INTERVAL", help="set crawling INTERVAL ms , [default = 500]")
 
     if len(sys.argv) == 1:
         parser.print_help()
 
-    global court_start, court_end, verbose, data_dir, year, case_type
+    global court_start, court_end, verbose, data_dir, year, case_type,interval
     (options, args) = parser.parse_args()
     court_start = options.court_start
     court_end= options.court_end
@@ -44,25 +45,28 @@ def parse_argv():
     data_dir = os.getcwd() if options.data_dir is None else options.data_dir
     if year is None or year > time.gmtime()[0] or year < 2008:
         sys.stderr.write('<year> format error! Allows integer between [2008, now] \n')
-        return [None] * 6
+        return [None] * 7
     if court_end > 3568 or court_end < 0:
         sys.stderr.write('court_end value error! it must between [1, 3568] \n')
-        return [None] * 6
+        return [None] * 7
+    if interval <= 0 :
+        sys.out.write('(interval <= 0)?!  Set it to the default (500 ms) \n')
     return court_start, court_end, verbose, data_dir, year, case_type
 
 
 def debug_args():
-    print("court_start\t", court_start)
-    print("court_end\t", court_end)
-    print("verbose\t", verbose)
-    print("data_dir\t", data_dir)
-    print("year\t", year)
-    print("case_type\t", case_type)
+    sys.out.write("court_start\t%s\n", court_start)
+    sys.out.write("court_end\t%s\n", court_end)
+    sys.out.write("verbose\t%s\n", verbose)
+    sys.out.write("data_dir\t%s\n", data_dir)
+    sys.out.write("year    \t%s\n", year)
+    sys.out.write("case_type\t%s\n", case_type)
+    sys.out.write("interval\t%s\n", interval)
     sys.exit(0)
 
 
 def main():
-    court_start, court_end, verbose, data_dir, year, case_type = parse_argv()
+    court_start, court_end, verbose, data_dir, year, case_type, interval = parse_argv()
     if year is None or case_type is None or court_end is None:
         exit(0)
 
@@ -102,6 +106,7 @@ def continue_crawl(spider, info, working_dir):
     next_docid = info['next_docid']
 
     while next_idx <= total_count:
+        ts = int(time.time * 1000)
         content = spider.get_detail(next_idx, total_count, next_docid, court_id )
         doc = json.loads(content)
         write_down(working_dir + os.sep + str(court_id), content, next_idx)
@@ -118,7 +123,8 @@ def continue_crawl(spider, info, working_dir):
             sys.stdout.write(str(next_idx) + "\t" + title +"\n")
 
         next_idx += 1
-
+        ii = int(time.time * 1000) - ts
+        time.sleep( 0 if ii > interval else (interval - ii)/1000.0)  #  sleep a while
 
 def update_info( info, next_docid):
     """updates info; +1 to idx then save {} to info.txt"""
