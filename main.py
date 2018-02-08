@@ -51,7 +51,7 @@ def parse_argv():
         return [None] * 7
     if interval <= 0 :
         sys.out.write('(interval <= 0)?!  Set it to the default (500 ms) \n')
-    return court_start, court_end, verbose, data_dir, year, case_type
+    return court_start, court_end, verbose, data_dir, year, case_type, interval
 
 
 def debug_args():
