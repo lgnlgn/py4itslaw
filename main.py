@@ -106,24 +106,28 @@ def continue_crawl(spider, info, working_dir):
     next_docid = info['next_docid']
 
     while next_idx <= total_count:
-        ts = int(time.time * 1000)
+        ts = int(time.time() * 1000)
         content = spider.get_detail(next_idx, total_count, next_docid, court_id )
         doc = json.loads(content)
         write_down(working_dir + os.sep + str(court_id), content, next_idx)
 
         next_docid = doc['data']['fullJudgement'].get('nextId')
-        if next_docid is None:
-            sys.stdout.write("%d\tfinished ! #docs:  %d \n" %(court_id, total_count))
-            next_docid = ''   #set to null
+        next_docid = '' if next_docid is None else  next_docid  # set to null
 
         info = update_info(info, next_docid) # set next_docid into info;
         flush_info(working_dir, info)
+
+        if next_docid == '':
+            sys.stdout.write("court:%d\tfinished ! #docs:  %d -> %d \n" %(court_id, next_idx, total_count))
+            info[total_count] = next_idx
+            break
+
         if verbose:
             title = doc['data']['fullJudgement']['title']
             sys.stdout.write(str(next_idx) + "\t" + title +"\n")
 
         next_idx += 1
-        ii = int(time.time * 1000) - ts
+        ii = int(time.time() * 1000) - ts
         time.sleep( 0 if ii > interval else (interval - ii)/1000.0)  #  sleep a while
 
 def update_info( info, next_docid):
@@ -142,9 +146,9 @@ def flush_info(writing_dir, info):
 
 
 def write_down(writing_dir, content, next_idx):
-    block_id = next_idx / LINES_PER_BLOCK
-    f = open(writing_dir + os.sep + str(block_id), 'a')
-    f.write(content + '\n')
+    block_id = int(next_idx / LINES_PER_BLOCK)
+    f = open(writing_dir + os.sep + str(block_id), 'a',encoding='utf-8')
+    f.write(content + "\n")
     f.close()
 
 
