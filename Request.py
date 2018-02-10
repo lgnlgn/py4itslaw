@@ -29,8 +29,8 @@ class ItslawRequester:
     '''
 
     # same id same condition court%2B7%2B5%2CcaseType%2B2%2B10%2CtrialYear%2B2014%2B7
-    detail_url_tpl = 'https://www.itslaw.com/api/v1/detail?timestamp=1505136306015&judgementId=$0&area=1&sortType=1&conditions=court%2B$5%2B5%2CcaseType%2B$4%2B10%2CtrialYear%2B$3%2B7'
-    detail_ref_tpl = 'https://www.itslaw.com/detail?judgementId=$0&area=1&index=$1&count=$2&sortType=1&conditions=trialYear%2B$3%2B7&conditions=caseType%2B$4%2B10&conditions=court%2B$5%2B5'
+    detail_url_tpl = 'https://www.itslaw.com/api/v1/detail?timestamp=1505136306015&judgementId=$0&area=$6&sortType=1&conditions=court%2B$5%2B5%2CcaseType%2B$4%2B10%2CtrialYear%2B$3%2B7'
+    detail_ref_tpl = 'https://www.itslaw.com/detail?judgementId=$0&area=$6&index=$1&count=$2&sortType=1&conditions=trialYear%2B$3%2B7&conditions=caseType%2B$4%2B10&conditions=court%2B$5%2B5'
 
     # only needs
     case_url_tpl = 'https://www.itslaw.com/api/v1/caseFiles?startIndex=0&countPerPage=2&sortType=1&conditions=trialYear%2B$0%2B7%2B$0&conditions=caseType%2B$1%2B10%2Bxxxxxx'
@@ -51,15 +51,17 @@ class ItslawRequester:
             self.head = f.read()
         self.send_headers = dict([h.strip().split(":", 1) for h in self.head.strip().split('\n')])
 
-    def get_detail(self, index, count, doc_id, court_id):
-        index, count, doc_id, court_id = map(str, (index, count, doc_id, court_id))
-        assert all([x.isdigit() for x in [index, count, court_id]])
+    def get_detail(self, index, count, court_id, area, doc_id):
+        index, count, doc_id, court_id, area = map(str, (index, count, doc_id, court_id, area))
+        assert all([x.isdigit() for x in [index, count, court_id, area]])
         timestamp = str(time.time() - 5).replace('.','')
         # detail_url = self.detail_url_tpl % (doc_id, self.year, self.case_type, court_id)
-        detail_url = self.detail_url_tpl.replace('$0', doc_id).replace('$3', self.year).replace('$4', self.case_type).replace('$5', court_id).replace("1505136306015", timestamp)
+        detail_url = self.detail_url_tpl.replace('$0', doc_id).replace('$3', self.year).replace('$4', self.case_type)\
+            .replace('$5', court_id).replace("1505136306015", timestamp).replace('$6', area)
 
         # detail_ref = self.detail_ref_tpl % (doc_id, index, count, self.year, self.case_type, court_id)
-        detail_ref = self.detail_ref_tpl.replace('$0', doc_id).replace('$1', index).replace('$2', count).replace('$3', self.year).replace('$4', self.case_type).replace('$5', court_id)
+        detail_ref = self.detail_ref_tpl.replace('$0', doc_id).replace('$1', index).replace('$2', count)\
+            .replace('$3', self.year).replace('$4', self.case_type).replace('$5', court_id).replace('$6', area)
 
         #print(detail_ref)
         #print(detail_url)
@@ -98,7 +100,4 @@ class ItslawRequester:
         req = ul.Request(url, headers= heade)
         resp = ul.urlopen(req)
         html = self.__decompress(resp)
-##        doc = resp.read()
-##        print doc
-##        html = gzip.decompress(doc).decode("utf-8")
         return html

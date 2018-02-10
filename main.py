@@ -4,7 +4,9 @@ import sys
 import os
 import json
 import time
+import logging
 from Request import ItslawRequester
+from Request import v
 from optparse import OptionParser
 
 data_dir = os.getcwd()
@@ -14,10 +16,14 @@ court_start = 1
 court_end = 3568
 year = 2015
 case_type=1
-crawling_info = {'court_id': 0,'total_count': -1, 'finished_idx': 0, 'next_idx': 0, 'next_docid': ''}
+crawling_info = {'court_id': 0,'total_count': -1, 'finished_idx': 0, 'next_idx': 0, 'next_docid': '', 'next_area': '0'}
 verbose = True
 interval = 500
 
+logger = logging.getLogger("itslaw_crawler")
+formatter = logging.Formatter('%(asctime)s %(levelname)-8s: %(message)s')
+
+# 文件日志
 
 
 def parse_argv():
@@ -28,7 +34,7 @@ def parse_argv():
     parser.add_option("-v", action="store_true", dest="verbose", default=False,help="set it to print crawling detail")
     parser.add_option("-y","--year",action = "store",type="int",dest = "year", metavar="YEAR",  help="set year, e.g. 2015")
     parser.add_option("-t","--case",action = "store", type="choice",dest = "case_type", choices = ['1','2','3','4'], metavar="CASETYPE",  help="set caseType, in [1,2,3,4], 1 = min, 2 = xing")
-    parser.add_option("-s","--start",action = "store",default = 1,type="int",dest = "court_start", metavar="COURT_START" ,help="set court_id STARTS from , [default = 1]")
+    parser.add_option("-s","--start",action = "store",default = 1,type="int",dest = "court_start", metavar="COURT_START" ,help="set court_id STARTS from max(COURT_START, already_done), [default = 1] ")
     parser.add_option("-e","--end",action = "store", default = 3568, type="int",dest = "court_end", metavar="COURT_END", help="set court_id ENDS from , [default = 3568]")
     parser.add_option("-i","--interval",action = "store", default = 500, type="int",dest = "interval", metavar="INTERVAL", help="set crawling INTERVAL ms , [default = 500]")
 
@@ -71,16 +77,22 @@ def main():
         exit(0)
 
     working_dir = data_dir + os.sep + str(year) + os.sep + str(case_type)
+    file_handler = logging.FileHandler(data_dir + os.sep + "log.log")
+    file_handler.setFormatter(formatter)  # 可以通过setFormatter指定输出格式
+    logger.addHandler(file_handler)
+
+    logger.info("starting")
+
     if not os.path.isdir(working_dir):
         os.makedirs(working_dir)
 
     spider = ItslawRequester(case_type, year)
 
     court_id = get_last_court(working_dir)
-    while court_id <= court_end:
-        if court_id == 0:        # only happens at the first time
+    while court_id <= court_end:  # we will use a court-mapping in the future
+        if court_id == 0:         # only happens at the first time
             sys.stdout.write(" first time of [%s , %s]\n" %(year, case_type))
-            court_id = court_start   #go to next loop
+            court_id = court_start   # go to next loop
             continue
         info = read_info(working_dir, court_id)
         if info is None:         # new court
@@ -92,11 +104,17 @@ def main():
             info = prepare_crawl(spider, court_id) # get list
             flush_info(working_dir, info)
             continue_crawl(spider, info, working_dir)           # start crawling from info
-        elif info['total_count'] == info['finished_idx']:  # already finished
+        elif info['total_count'] == info['finished_idx'] or info['next_docid'] == '-':  # already finished
             pass
         else:
             continue_crawl(spider, info, working_dir)           # continue crawling from info
         court_id += 1
+    # special court 3647: 北京专利法院
+    court_id = 3647
+    create_info(working_dir, court_id)
+    info = prepare_crawl(spider, court_id)
+    flush_info(working_dir, info)
+    continue_crawl(spider, info, working_dir)
 
 
 def continue_crawl(spider, info, working_dir):
@@ -104,22 +122,38 @@ def continue_crawl(spider, info, working_dir):
     next_idx = info['next_idx']
     total_count = info['total_count']
     next_docid = info['next_docid']
-
-    while next_idx <= total_count:
+    next_area = info['next_area']
+    retries = 2
+    crawled_num = 0
+    while True:  # do not use totalCount for boundary
         ts = int(time.time() * 1000)
-        content = spider.get_detail(next_idx, total_count, next_docid, court_id )
+        try:
+            content = spider.get_detail(next_idx, total_count, court_id, next_area, next_docid)
+            crawled_num += 1
+        except:
+            sys.stderr.write(" get_detail error#######")
+            logger.exception(" get_detail error#######")
+            time.sleep(10)
+            if retries:
+                retries -= 1
+                continue  # re-crawl if http exception
+            else:
+                raise RuntimeError('spider fetch error')
+
         doc = json.loads(content)
         write_down(working_dir + os.sep + str(court_id), content, next_idx)
 
         next_docid = doc['data']['fullJudgement'].get('nextId')
-        next_docid = '' if next_docid is None else  next_docid  # set to null
+        next_docid = '-' if next_docid is None else next_docid  # set to null
+        next_area = doc['data']['fullJudgement'].get('nextArea')
 
-        info = update_info(info, next_docid) # set next_docid into info;
+        info = update_info(info, next_docid, next_area) # set next_docid into info;
         flush_info(working_dir, info)
-
-        if next_docid == '':
+        if next_docid == '-':
             sys.stdout.write("court:%d\tfinished ! #docs:  %d -> %d \n" %(court_id, next_idx, total_count))
             info[total_count] = next_idx
+            if next_idx < total_count:
+                logger.warning("court:%d\tfinished ! #docs:  %d -> %d \n" % (court_id, next_idx, total_count))
             break
 
         if verbose:
@@ -127,12 +161,17 @@ def continue_crawl(spider, info, working_dir):
             sys.stdout.write(str(next_idx) + "\t" + title +"\n")
 
         next_idx += 1
+        if crawled_num % 200 == 0:
+            sys.stdout.write("sleep a while!\n")
+            time.sleep(60)
         ii = int(time.time() * 1000) - ts
-        time.sleep( 0 if ii > interval else (interval - ii)/1000.0)  #  sleep a while
+        time.sleep(0 if ii > interval else (interval - ii)/1000.0)  #  sleep a while
 
-def update_info( info, next_docid):
+
+def update_info( info, next_docid, next_area):
     """updates info; +1 to idx then save {} to info.txt"""
     info['next_docid'] = next_docid
+    info['next_area'] = next_area
     info['next_idx'] += 1
     info['finished_idx'] += 1
     return info
@@ -146,8 +185,11 @@ def flush_info(writing_dir, info):
 
 
 def write_down(writing_dir, content, next_idx):
-    block_id = int(next_idx / LINES_PER_BLOCK)
-    f = open(writing_dir + os.sep + str(block_id), 'a',encoding='utf-8')
+    block_id = int((next_idx - 1) / LINES_PER_BLOCK)
+    if v == 2:
+        f = open(writing_dir + os.sep + str(block_id), 'a')
+    else:
+        f = open(writing_dir + os.sep + str(block_id), 'a', encoding='utf-8')
     f.write(content + "\n")
     f.close()
 
@@ -176,7 +218,6 @@ def create_info(working_dir, court_id):
         flush_info(working_dir, ci)
 
 
-
 def read_info(working_dir, court_id):
     """ reads from info.txt"""
     court_dir = working_dir + os.sep + str(court_id)
@@ -190,18 +231,20 @@ def read_info(working_dir, court_id):
 
 
 def prepare_crawl(spider, court_id):
-    sys.stdout.write(" =>  get_list :" + str(court_id) + "\n")
     list_result = spider.get_list(court_id)
     doc = json.loads(list_result)
     total_count = doc['data']['searchResult']['totalCount']
+    page_area = doc['data']['searchResult']['pageArea']
     if total_count != 0:
         first = doc['data']['searchResult']['judgements'][0]
-        info = { 'next_docid': first['id'], 'next_idx': 1 }
+        info = {'next_docid': first['id'], 'next_idx': 1 }
     else:
-        info = { 'next_docid': '', 'next_idx': 0 }
+        info = {'next_docid': '', 'next_idx': 0 }
     info['court_id'] = court_id
     info['finished_idx'] = 0
     info['total_count'] = total_count
+    info['next_area'] = page_area
+    sys.stdout.write(" \tcourt:%d  get_list : total count=>%d\n"%(court_id, total_count))
     return info
 
 
