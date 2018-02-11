@@ -4,11 +4,11 @@ import  sys
 import json
 import time
 v = sys.version_info[0]
-if v == 3:
-    import  urllib.request as ul
-else:
+if v == 2:
     from StringIO import StringIO
     import urllib2 as ul
+else:
+    import urllib.request as ul
 
 conditions = {'trialYear':'%2B$0%2B7%2B$0', 'caseType':'%2B$1%2B10%2Bxxxxxx', 'searchView':'text', 'court':'%2B$5%2B52C'}
 
@@ -29,24 +29,26 @@ class ItslawRequester:
     '''
 
     # same id same condition court%2B7%2B5%2CcaseType%2B2%2B10%2CtrialYear%2B2014%2B7
-    detail_url_tpl = 'https://www.itslaw.com/api/v1/detail?timestamp=1505136306015&judgementId=$0&area=$6&sortType=1&conditions=court%2B$5%2B5%2CcaseType%2B$4%2B10%2CtrialYear%2B$3%2B7'
-    detail_ref_tpl = 'https://www.itslaw.com/detail?judgementId=$0&area=$6&index=$1&count=$2&sortType=1&conditions=trialYear%2B$3%2B7&conditions=caseType%2B$4%2B10&conditions=court%2B$5%2B5'
+    detail_url_tpl = 'https://www.itslaw.com/api/v1/detail?timestamp=1505136306015&judgementId=$0&area=$6&sortType=1&conditions=court%2B$5%2B5%2CcaseType%2B$4%2B10%2CtrialYear%2B$3%2B7%2CjudgementType%2B$7%2B9'
+    detail_ref_tpl = 'https://www.itslaw.com/detail?judgementId=$0&area=$6&index=$1&count=$2&sortType=1&conditions=trialYear%2B$3%2B7&conditions=caseType%2B$4%2B10&conditions=court%2B$5%2B5%2CjudgementType%2B$7%2B9'
 
     # only needs
-    case_url_tpl = 'https://www.itslaw.com/api/v1/caseFiles?startIndex=0&countPerPage=2&sortType=1&conditions=trialYear%2B$0%2B7%2B$0&conditions=caseType%2B$1%2B10%2Bxxxxxx'
-    case_ref_tpl = 'https://www.itslaw.com/search?searchMode=judgements&sortType=1&conditions=trialYear%2B$0%2B7%2B$0&conditions=caseType%2B$1%2B10%2Bxxxxxx'
+    case_url_tpl = 'https://www.itslaw.com/api/v1/caseFiles?startIndex=0&countPerPage=2&sortType=1&conditions=trialYear%2B$0%2B7%2B$0&conditions=caseType%2B$1%2B10%2Bxxxxxx&conditions=judgementType%2B$2%2B9%2Bzzzzzzz'
+    case_ref_tpl = 'https://www.itslaw.com/search?searchMode=judgements&sortType=1&conditions=trialYear%2B$0%2B7%2B$0&conditions=caseType%2B$1%2B10%2Bxxxxxx&conditions=judgementType%2B$2%2B9%2Bzzzzzzz'
 
-    list_url_tpl = case_url_tpl + "&conditions=court%2B$2%2B5%2Bxxxxxxxxx"
-    list_ref_tpl = case_ref_tpl + "&conditions=court%2B$2%2B5%2Bxxxxxxxxx&searchView=text"
+    list_url_tpl = case_url_tpl + "&conditions=court%2B$3%2B5%2Bxxxxxxxxx"
+    list_ref_tpl = case_ref_tpl + "&conditions=court%2B$3%2B5%2Bxxxxxxxxx&searchView=text"
 
     case_type = '2'
     year = '2014'
+    judge_type = '1'
 
     send_headers = dict()
 
-    def __init__(self, case_type, year):
+    def __init__(self,year, case_type, judge_type):
         self.case_type = str(case_type)
         self.year = str(year)
+        self.judge_type = str(judge_type)
         with open('headers.txt') as f:
             self.head = f.read()
         self.send_headers = dict([h.strip().split(":", 1) for h in self.head.strip().split('\n')])
@@ -57,27 +59,27 @@ class ItslawRequester:
         timestamp = str(time.time() - 5).replace('.','')
         # detail_url = self.detail_url_tpl % (doc_id, self.year, self.case_type, court_id)
         detail_url = self.detail_url_tpl.replace('$0', doc_id).replace('$3', self.year).replace('$4', self.case_type)\
-            .replace('$5', court_id).replace("1505136306015", timestamp).replace('$6', area)
+            .replace('$5', court_id).replace("1505136306015", timestamp).replace('$6', area).replace('$7', self.judge_type)
 
         # detail_ref = self.detail_ref_tpl % (doc_id, index, count, self.year, self.case_type, court_id)
-        detail_ref = self.detail_ref_tpl.replace('$0', doc_id).replace('$1', index).replace('$2', count)\
-            .replace('$3', self.year).replace('$4', self.case_type).replace('$5', court_id).replace('$6', area)
+        detail_ref = self.detail_ref_tpl.replace('$0', doc_id).replace('$1', index).replace('$2', count).replace('$3', self.year)\
+            .replace('$4', self.case_type).replace('$5', court_id).replace('$6', area).replace('$7', self.judge_type)
 
         #print(detail_ref)
         #print(detail_url)
         return self.__req(detail_url, detail_ref)
 
     def get_case(self):
-        case_url = self.case_url_tpl.replace('$0', self.year).replace('$1', self.case_type)
-        case_ref = self.case_ref_tpl.replace('$0', self.year).replace('$1', self.case_type)
+        case_url = self.case_url_tpl.replace('$0', self.year).replace('$1', self.case_type).replace('$2', self.judge_type)
+        case_ref = self.case_ref_tpl.replace('$0', self.year).replace('$1', self.case_type).replace('$2', self.judge_type)
         print(case_url)
         print(case_ref)
         return self.__req(case_url, case_ref)
 
     def get_list(self, court_id):
         court_id = str(court_id)
-        list_url = self.list_url_tpl.replace('$0', self.year).replace('$1', self.case_type).replace('$2', court_id)
-        list_ref = self.list_ref_tpl.replace('$0', self.year).replace('$1', self.case_type).replace('$2', court_id)
+        list_url = self.list_url_tpl.replace('$0', self.year).replace('$1', self.case_type).replace('$2', self.judge_type).replace('$3', court_id)
+        list_ref = self.list_ref_tpl.replace('$0', self.year).replace('$1', self.case_type).replace('$2', self.judge_type).replace('$3', court_id)
         # print(list_url)
         # print(list_ref)
         return self.__req(list_url, list_ref)
@@ -91,6 +93,9 @@ class ItslawRequester:
                 data = f.read()
             else:
                 data = gzip.decompress(data).decode("utf-8")
+            return data
+        elif type(data) == bytes:
+            return str(data, encoding = "utf-8")
         return data
 
     def __req(self, url, ref):

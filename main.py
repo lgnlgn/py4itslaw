@@ -15,7 +15,8 @@ LINES_PER_BLOCK = 100
 court_start = 1
 court_end = 3568
 year = 2015
-case_type=1
+case_type=2
+judge_type=9
 crawling_info = {'court_id': 0,'total_count': -1, 'finished_idx': 0, 'next_idx': 0, 'next_docid': '', 'next_area': '0'}
 verbose = True
 interval = 500
@@ -23,60 +24,71 @@ interval = 500
 logger = logging.getLogger("itslaw_crawler")
 formatter = logging.Formatter('%(asctime)s %(levelname)-8s: %(message)s')
 
+usage = "main.py [-y <year>][-t <caseType>][-j <judgeType>][-d [dir]][-s [courtStart]][-e [courtEnd]][-v]"
+parser= OptionParser(usage)
 # 文件日志
 
 
 def parse_argv():
-    usage = "main.py [-y <year>][-t <caseType>][-d [dir]][-s [courtStart]][-e [courtEnd]][-v]"
+    usage = "main.py [-y <year>][-t <caseType>][-j <judgeType>][-d [dir]][-s [courtStart]][-e [courtEnd]][-v]"
 
     parser= OptionParser(usage)
     parser.add_option("-d", "--dir",action="store", metavar="DIR",type="string", dest="data_dir", help="data directory for saving [default = .]")
     parser.add_option("-v", action="store_true", dest="verbose", default=False,help="set it to print crawling detail")
     parser.add_option("-y","--year",action = "store",type="int",dest = "year", metavar="YEAR",  help="set year, e.g. 2015")
-    parser.add_option("-t","--case",action = "store", type="choice",dest = "case_type", choices = ['1','2','3','4'], metavar="CASETYPE",  help="set caseType, in [1,2,3,4], 1 = min, 2 = xing")
+    parser.add_option("-t","--case",action = "store", type="choice",dest = "case_type", choices = ['1','2','3','4'], metavar="CASETYPE",  help="set caseType, in [1,2,3,4], 民事刑事行政执行")
+    parser.add_option("-j","--judge",action = "store", type="choice",dest = "judge_type", choices = ['1','2','3','4','5'], metavar="JUDGETYPE",  help=u"set judgeType, in [1,2,3,4,5], 判决裁定通知决定调解")
     parser.add_option("-s","--start",action = "store",default = 1,type="int",dest = "court_start", metavar="COURT_START" ,help="set court_id STARTS from max(COURT_START, already_done), [default = 1] ")
     parser.add_option("-e","--end",action = "store", default = 3568, type="int",dest = "court_end", metavar="COURT_END", help="set court_id ENDS from , [default = 3568]")
-    parser.add_option("-i","--interval",action = "store", default = 500, type="int",dest = "interval", metavar="INTERVAL", help="set crawling INTERVAL ms , [default = 500]")
+    parser.add_option("-i","--interval",action = "store", default = 1000, type="int",dest = "interval", metavar="INTERVAL", help="set crawling INTERVAL ms , [default = 1000]")
 
     if len(sys.argv) == 1:
         parser.print_help()
 
-    global court_start, court_end, verbose, data_dir, year, case_type,interval
+    global court_start, court_end, verbose, data_dir, year, case_type, judge_type, interval
     (options, args) = parser.parse_args()
     court_start = options.court_start
     court_end= options.court_end
     case_type = options.case_type
     year = options.year
     verbose = options.verbose
+    judge_type = options.judge_type
+    interval = options.interval
     data_dir = os.getcwd() if options.data_dir is None else options.data_dir
     if year is None or year > time.gmtime()[0] or year < 2008:
-        sys.stderr.write('<year> format error! Allows integer between [2008, now] \n')
-        return [None] * 7
+        sys.stderr.write('!!! <year> format error! Allows integer between [2008, now] \n')
+        return [None] * 8
     if court_end > 3568 or court_end < 0:
-        sys.stderr.write('court_end value error! it must between [1, 3568] \n')
-        return [None] * 7
-    if interval <= 0 :
-        sys.out.write('(interval <= 0)?!  Set it to the default (500 ms) \n')
-    return court_start, court_end, verbose, data_dir, year, case_type, interval
+        sys.stderr.write('!!! court_end value error! it must between [1, 3568] \n')
+        return [None] * 8
+    if judge_type is None or case_type is None:
+        sys.stderr.write('!!! <caseType>  <judgeType> needs to be set \n')
+        return [None] * 8
+    if interval <= 0:
+        sys.stdout.write('(interval <= 0)?!  Set it to the default (1000 ms) \n')
+    return court_start, court_end, verbose, data_dir, year, case_type, judge_type, interval
 
 
 def debug_args():
-    sys.out.write("court_start\t%s\n", court_start)
-    sys.out.write("court_end\t%s\n", court_end)
-    sys.out.write("verbose\t%s\n", verbose)
-    sys.out.write("data_dir\t%s\n", data_dir)
-    sys.out.write("year    \t%s\n", year)
-    sys.out.write("case_type\t%s\n", case_type)
-    sys.out.write("interval\t%s\n", interval)
+    sys.stdout.write("court_start\t%s\n"% court_start)
+    sys.stdout.write("court_end\t%s\n"% court_end)
+    sys.stdout.write("verbose  \t%s\n"% verbose)
+    sys.stdout.write("data_dir\t%s\n"% data_dir)
+    sys.stdout.write("year    \t%s\n"% year)
+    sys.stdout.write("case_type\t%s\n"% case_type)
+    sys.stdout.write("judge_type\t%s\n"% judge_type)
+    sys.stdout.write("interval\t%s\n"% interval)
+
     sys.exit(0)
 
 
 def main():
-    court_start, court_end, verbose, data_dir, year, case_type, interval = parse_argv()
+    court_start, court_end, verbose, data_dir, year, case_type, judge_type, interval = parse_argv()
     if year is None or case_type is None or court_end is None:
+        parser.print_help()
         exit(0)
-
-    working_dir = data_dir + os.sep + str(year) + os.sep + str(case_type)
+    # debug_args()
+    working_dir = data_dir + os.sep + str(year) + os.sep + case_type + "_" + judge_type
     file_handler = logging.FileHandler(data_dir + os.sep + "log.log")
     file_handler.setFormatter(formatter)  # 可以通过setFormatter指定输出格式
     logger.addHandler(file_handler)
@@ -86,7 +98,7 @@ def main():
     if not os.path.isdir(working_dir):
         os.makedirs(working_dir)
 
-    spider = ItslawRequester(case_type, year)
+    spider = ItslawRequester(year, case_type, judge_type)
 
     court_id = get_last_court(working_dir)
     while court_id <= court_end:  # we will use a court-mapping in the future
@@ -103,7 +115,8 @@ def main():
         if info['total_count'] == -1:
             info = prepare_crawl(spider, court_id) # get list
             flush_info(working_dir, info)
-            continue_crawl(spider, info, working_dir)           # start crawling from info
+            continue
+            # continue_crawl(spider, info, working_dir)           # start crawling from info
         elif info['total_count'] == info['finished_idx'] or info['next_docid'] == '-':  # already finished
             pass
         else:
@@ -133,7 +146,7 @@ def continue_crawl(spider, info, working_dir):
         except:
             sys.stderr.write(" get_detail error#######")
             logger.exception(" get_detail error#######")
-            time.sleep(10)
+            time.sleep(60)
             if retries:
                 retries -= 1
                 continue  # re-crawl if http exception
