@@ -175,7 +175,8 @@ def continue_crawl(spider, info, working_dir):
             try:
                 sys.stdout.write("%d\t%s\n"%(next_idx, title))
             except:
-                sys.stdout.write("%d\t print error!\t%s\n"%(next_idx, repr(title)))
+                sys.stdout.write("court:%d index %d print error\n" % (court_id, next_idx))
+                logger.error("court:%d index %d print error\n"%(court_id, next_idx))
 
         next_idx += 1
         if crawled_num % 200 == 0:

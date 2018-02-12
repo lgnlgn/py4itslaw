@@ -15,6 +15,10 @@ a simple python crawler for www.itslaw.com
 
 ### py4itslaw如何使用？
 
+* 准备
+
+使用浏览器打开https://www.itslaw.com; F12取出请求头按 headers.txt格式复制粘贴进去。
+
 * 基本用法
 
  Usage: main.py [-y <year>][-t <caseType>][-j <judgeType>][-d [dir]][-s [courtStart]][-e [courtEnd]][-v]
@@ -22,7 +26,7 @@ a simple python crawler for www.itslaw.com
 * Options:
 ```
   -h, --help            show this help message and exit
-  -d DIR, --dir=DIR     data directory for saving [default = .]
+  -d DIR, --dir=DIR     data directory for saving [default = .]；Error log will be stored here. 
   -v                    set it to print crawling detail
   -y YEAR, --year=YEAR  set year, e.g. 2015
   -t CASETYPE, --case=CASETYPE
