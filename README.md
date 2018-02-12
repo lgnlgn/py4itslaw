@@ -8,11 +8,12 @@ a simple python crawler for www.itslaw.com
 ```
 
 
-###py4itslaw是什么?
+### py4itslaw是什么?
+
 一个抓取itslaw 法律文书的简单爬虫
 
 
-###py4itslaw如何使用？
+### py4itslaw如何使用？
 
 * 基本用法
 
@@ -48,5 +49,5 @@ a simple python crawler for www.itslaw.com
  
  每抓取一篇文书会停留至多`INTERVAL`毫秒
  
-###改进的方向
+### 改进的方向
 1. 遍历法院id方式，目前采用法院id从1~3568方式抓取。而上很多年份（2010年前）、类型下的文书不足，统计后法院并无3500个。因此可以改成根据caseFile中的regionResult实际情况来抓取（起初设计也是这样，但后来发现很多法院缺少id, 需要补全所有法院的id）
