@@ -16,10 +16,10 @@ court_start = 1
 court_end = 3568
 year = 2015
 case_type=2
-judge_type=9
+judge_type=1
 crawling_info = {'court_id': 0,'total_count': -1, 'finished_idx': 0, 'next_idx': 0, 'next_docid': '', 'next_area': '0'}
 verbose = True
-interval = 500
+interval = 1000
 
 logger = logging.getLogger("itslaw_crawler")
 formatter = logging.Formatter('%(asctime)s %(levelname)-8s: %(message)s')
@@ -36,7 +36,7 @@ def parse_argv():
     parser.add_option("-d", "--dir",action="store", metavar="DIR",type="string", dest="data_dir", help="data directory for saving [default = .]")
     parser.add_option("-v", action="store_true", dest="verbose", default=False,help="set it to print crawling detail")
     parser.add_option("-y","--year",action = "store",type="int",dest = "year", metavar="YEAR",  help="set year, e.g. 2015")
-    parser.add_option("-t","--case",action = "store", type="choice",dest = "case_type", choices = ['1','2','3','4'], metavar="CASETYPE",  help="set caseType, in [1,2,3,4], 民事刑事行政执行")
+    parser.add_option("-t","--case",action = "store", type="choice",dest = "case_type", choices = ['1','2','3','4'], metavar="CASETYPE",  help=u"set caseType, in [1,2,3,4], 民事刑事行政执行")
     parser.add_option("-j","--judge",action = "store", type="choice",dest = "judge_type", choices = ['1','2','3','4','5'], metavar="JUDGETYPE",  help=u"set judgeType, in [1,2,3,4,5], 判决裁定通知决定调解")
     parser.add_option("-s","--start",action = "store",default = 1,type="int",dest = "court_start", metavar="COURT_START" ,help="set court_id STARTS from max(COURT_START, already_done), [default = 1] ")
     parser.add_option("-e","--end",action = "store", default = 3568, type="int",dest = "court_end", metavar="COURT_END", help="set court_id ENDS from , [default = 3568]")
@@ -143,15 +143,16 @@ def continue_crawl(spider, info, working_dir):
         try:
             content = spider.get_detail(next_idx, total_count, court_id, next_area, next_docid)
             crawled_num += 1
+            retries = 2
         except:
-            sys.stderr.write(" get_detail error#######")
-            logger.exception(" get_detail error#######")
-            time.sleep(60)
+            sys.stderr.write(" get_detail error####### remaining: %d retries\n" %retries)
+            logger.exception(" get_detail error####### remaining: %d retries\n" %retries)
+            time.sleep(30*((3-retries)**0.5))
             if retries:
                 retries -= 1
                 continue  # re-crawl if http exception
             else:
-                raise RuntimeError('spider fetch error')
+                raise RuntimeError(' spider fetch error !!%d '%retries)
 
         doc = json.loads(content)
         write_down(working_dir + os.sep + str(court_id), content, next_idx)
@@ -163,20 +164,23 @@ def continue_crawl(spider, info, working_dir):
         info = update_info(info, next_docid, next_area) # set next_docid into info;
         flush_info(working_dir, info)
         if next_docid == '-':
-            sys.stdout.write("court:%d\tfinished ! #docs:  %d -> %d \n" %(court_id, next_idx, total_count))
+            sys.stdout.write("court:%d\tfinished ! #docs:  %d -> %d \n" %(court_id, total_count, next_idx))
             info[total_count] = next_idx
             if next_idx < total_count:
-                logger.warning("court:%d\tfinished ! #docs:  %d -> %d \n" % (court_id, next_idx, total_count))
+                logger.warning("court:%d\tfinished ! #docs:  %d -> %d \n" % (court_id, total_count, next_idx))
             break
 
         if verbose:
             title = doc['data']['fullJudgement']['title']
-            sys.stdout.write(str(next_idx) + "\t" + title +"\n")
+            try:
+                sys.stdout.write("%d\t%s\n"%(next_idx, title))
+            except:
+                sys.stdout.write("%d\t print error!\t%s\n"%(next_idx, repr(title)))
 
         next_idx += 1
         if crawled_num % 200 == 0:
             sys.stdout.write("sleep a while!\n")
-            time.sleep(60)
+            time.sleep(35)
         ii = int(time.time() * 1000) - ts
         time.sleep(0 if ii > interval else (interval - ii)/1000.0)  #  sleep a while
 
