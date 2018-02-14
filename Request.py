@@ -10,7 +10,6 @@ if v == 2:
 else:
     import urllib.request as ul
 
-conditions = {'trialYear':'%2B$0%2B7%2B$0', 'caseType':'%2B$1%2B10%2Bxxxxxx', 'searchView':'text', 'court':'%2B$5%2B52C'}
 
 
 class ItslawRequester:

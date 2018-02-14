@@ -113,7 +113,12 @@ def main():
             continue
 
         if info['total_count'] == -1:
-            info = prepare_crawl(spider, court_id) # get list
+            try:
+                info = prepare_crawl(spider, court_id) # get list
+            except:
+                logger.error("prepare_crawl error!! retrying")
+                time.sleep(30)
+                info = prepare_crawl(spider, court_id)  # get list
             flush_info(working_dir, info)
             continue
             # continue_crawl(spider, info, working_dir)           # start crawling from info
@@ -136,18 +141,18 @@ def continue_crawl(spider, info, working_dir):
     total_count = info['total_count']
     next_docid = info['next_docid']
     next_area = info['next_area']
-    retries = 2
+    retries = 1
     crawled_num = 0
     while True:  # do not use totalCount for boundary
         ts = int(time.time() * 1000)
         try:
             content = spider.get_detail(next_idx, total_count, court_id, next_area, next_docid)
             crawled_num += 1
-            retries = 2
+            retries = 1
         except:
             sys.stderr.write(" get_detail error####### remaining: %d retries\n" %retries)
             logger.exception(" get_detail error####### remaining: %d retries\n" %retries)
-            time.sleep(30*((3-retries)**0.5))
+            time.sleep(30)
             if retries:
                 retries -= 1
                 continue  # re-crawl if http exception
@@ -163,12 +168,6 @@ def continue_crawl(spider, info, working_dir):
 
         info = update_info(info, next_docid, next_area) # set next_docid into info;
         flush_info(working_dir, info)
-        if next_docid == '-':
-            sys.stdout.write("court:%d\tfinished ! #docs:  %d -> %d \n" %(court_id, total_count, next_idx))
-            info[total_count] = next_idx
-            if next_idx < total_count:
-                logger.warning("court:%d\tfinished ! #docs:  %d -> %d \n" % (court_id, total_count, next_idx))
-            break
 
         if verbose:
             title = doc['data']['fullJudgement']['title']
@@ -178,10 +177,17 @@ def continue_crawl(spider, info, working_dir):
                 sys.stdout.write("court:%d index %d print error\n" % (court_id, next_idx))
                 logger.error("court:%d index %d print error\n"%(court_id, next_idx))
 
+        if next_docid == '-':
+            sys.stdout.write("court:%d\tfinished ! #docs:  %d -> %d \n" %(court_id, total_count, next_idx))
+            info[total_count] = next_idx
+            if next_idx < total_count:
+                logger.warning("court:%d\tfinished ! #docs:  %d -> %d \n" % (court_id, total_count, next_idx))
+            break
+
         next_idx += 1
         if crawled_num % 200 == 0:
             sys.stdout.write("sleep a while!\n")
-            time.sleep(35)
+            time.sleep(30)
         ii = int(time.time() * 1000) - ts
         time.sleep(0 if ii > interval else (interval - ii)/1000.0)  #  sleep a while
 
