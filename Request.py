@@ -12,6 +12,7 @@ else:
 
 
 
+
 class ItslawRequester:
     head = '''
     Accept:application/json, text/plain, */*
@@ -44,12 +45,18 @@ class ItslawRequester:
 
     send_headers = dict()
 
-    def __init__(self,year, case_type, judge_type):
+    proxy = {}
+
+    def __init__(self, year, case_type, judge_type, proxy_str=''):
         self.case_type = str(case_type)
         self.year = str(year)
         self.judge_type = str(judge_type)
+        if proxy_str:
+            pass
+            # self.proxy = {proxy_str.split(":")[0] : proxy_str}
         with open('headers.txt') as f:
             self.head = f.read()
+
         self.send_headers = dict([h.strip().split(":", 1) for h in self.head.strip().split('\n')])
 
     def get_detail(self, index, count, court_id, area, doc_id):
@@ -102,6 +109,10 @@ class ItslawRequester:
         heade['Referer'] = ref
         #print(heade)
         req = ul.Request(url, headers= heade)
+        if self.proxy:
+            proxy_support = ul.ProxyHandler(self.proxy)
+            opener = ul.build_opener(proxy_support)
+            ul.install_opener(opener)
         resp = ul.urlopen(req)
         html = self.__decompress(resp)
         return html

@@ -125,14 +125,15 @@ def main():
         elif info['total_count'] == info['finished_idx'] or info['next_docid'] == '-':  # already finished
             pass
         else:
+            sys.stdout.write("continue crawl: %s \n" % str(info))
             continue_crawl(spider, info, working_dir)           # continue crawling from info
         court_id += 1
-    # special court 3647: 北京专利法院
-    court_id = 3647
-    create_info(working_dir, court_id)
-    info = prepare_crawl(spider, court_id)
-    flush_info(working_dir, info)
-    continue_crawl(spider, info, working_dir)
+    # special courts 3647: 北京专利法院
+    for court_id in [3647, 3690, 3691]:
+        create_info(working_dir, court_id)
+        info = prepare_crawl(spider, court_id)
+        flush_info(working_dir, info)
+        continue_crawl(spider, info, working_dir)
 
 
 def continue_crawl(spider, info, working_dir):
@@ -170,12 +171,7 @@ def continue_crawl(spider, info, working_dir):
         flush_info(working_dir, info)
 
         if verbose:
-            title = doc['data']['fullJudgement']['title']
-            try:
-                sys.stdout.write("%d\t%s\n"%(next_idx, title))
-            except:
-                sys.stdout.write("court:%d index %d print error\n" % (court_id, next_idx))
-                logger.error("court:%d index %d print error\n"%(court_id, next_idx))
+            sys.stdout.write("%d\t%s\n"%(next_idx, next_docid))
 
         if next_docid == '-':
             sys.stdout.write("court:%d\tfinished ! #docs:  %d -> %d \n" %(court_id, total_count, next_idx))
