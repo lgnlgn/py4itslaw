@@ -55,8 +55,8 @@ def parse_argv():
     judge_type = options.judge_type
     interval = options.interval
     data_dir = os.getcwd() if options.data_dir is None else options.data_dir
-    if year is None or year > time.gmtime()[0] or year < 2008:
-        sys.stderr.write('!!! <year> format error! Allows integer between [2008, now] \n')
+    if year is None or year > time.gmtime()[0] or year < 1995:
+        sys.stderr.write('!!! <year> format error! Allows integer between [1995, now] \n')
         return [None] * 8
     if court_end > 3568 or court_end < 0:
         sys.stderr.write('!!! court_end value error! it must between [1, 3568] \n')
