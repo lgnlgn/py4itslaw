@@ -4,6 +4,8 @@ import sys
 import os
 import json
 import time
+import atexit
+import platform
 import logging
 from Request import ItslawRequester
 from Request import v
@@ -20,6 +22,7 @@ judge_type=1
 crawling_info = {'court_id': 0,'total_count': -1, 'finished_idx': 0, 'next_idx': 0, 'next_docid': '', 'next_area': '0'}
 verbose = True
 interval = 1000
+poweroff = False
 
 logger = logging.getLogger("itslaw_crawler")
 formatter = logging.Formatter('%(asctime)s %(levelname)-8s: %(message)s')
@@ -30,30 +33,32 @@ parser= OptionParser(usage)
 
 
 def parse_argv():
-    usage = "main.py [-y <year>][-t <caseType>][-j <judgeType>][-d [dir]][-s [courtStart]][-e [courtEnd]][-v]"
 
-    parser= OptionParser(usage)
     parser.add_option("-d", "--dir",action="store", metavar="DIR",type="string", dest="data_dir", help="data directory for saving [default = .]")
-    parser.add_option("-v", action="store_true", dest="verbose", default=False,help="set it to print crawling detail")
+    parser.add_option("-v", action="store_true", dest="verbose", default=False, help="set it to print crawling detail")
     parser.add_option("-y","--year",action = "store",type="int",dest = "year", metavar="YEAR",  help="set year, e.g. 2015")
     parser.add_option("-t","--case",action = "store", type="choice",dest = "case_type", choices = ['1','2','3','4'], metavar="CASETYPE",  help=u"set caseType, in [1,2,3,4], 民事刑事行政执行")
     parser.add_option("-j","--judge",action = "store", type="choice",dest = "judge_type", choices = ['1','2','3','4','5'], metavar="JUDGETYPE",  help=u"set judgeType, in [1,2,3,4,5], 判决裁定通知决定调解")
     parser.add_option("-s","--start",action = "store",default = 1,type="int",dest = "court_start", metavar="COURT_START" ,help="set court_id STARTS from max(COURT_START, already_done), [default = 1] ")
     parser.add_option("-e","--end",action = "store", default = 3568, type="int",dest = "court_end", metavar="COURT_END", help="set court_id ENDS from , [default = 3568]")
     parser.add_option("-i","--interval",action = "store", default = 1000, type="int",dest = "interval", metavar="INTERVAL", help="set crawling INTERVAL ms , [default = 1000]")
+    parser.add_option("-p","--poweroff",action = "store_true",dest = "poweroff", default=False, help="set it to poweroff whether task finished or error occured")
+
 
     if len(sys.argv) == 1:
         parser.print_help()
 
-    global court_start, court_end, verbose, data_dir, year, case_type, judge_type, interval
+    global court_start, court_end, verbose, data_dir, year, case_type, judge_type, interval, poweroff
     (options, args) = parser.parse_args()
     court_start = options.court_start
-    court_end= options.court_end
+    court_end = options.court_end
     case_type = options.case_type
     year = options.year
     verbose = options.verbose
     judge_type = options.judge_type
     interval = options.interval
+    poweroff = options.poweroff
+
     data_dir = os.getcwd() if options.data_dir is None else options.data_dir
     if year is None or year > time.gmtime()[0] or year < 1995:
         sys.stderr.write('!!! <year> format error! Allows integer between [1995, now] \n')
@@ -66,10 +71,10 @@ def parse_argv():
         return [None] * 8
     if interval <= 0:
         sys.stdout.write('(interval <= 0)?!  Set it to the default (1000 ms) \n')
-    return court_start, court_end, verbose, data_dir, year, case_type, judge_type, interval
+    return court_start, court_end, verbose, data_dir, year, case_type, judge_type, interval, poweroff
 
 
-def debug_args():
+def debug_args(exit0 = True):
     sys.stdout.write("court_start\t%s\n"% court_start)
     sys.stdout.write("court_end\t%s\n"% court_end)
     sys.stdout.write("verbose  \t%s\n"% verbose)
@@ -78,16 +83,13 @@ def debug_args():
     sys.stdout.write("case_type\t%s\n"% case_type)
     sys.stdout.write("judge_type\t%s\n"% judge_type)
     sys.stdout.write("interval\t%s\n"% interval)
-
-    sys.exit(0)
+    sys.stdout.write("poweroff\t%s\n" % poweroff)
+    if exit0:
+        sys.exit(0)
 
 
 def main():
-    court_start, court_end, verbose, data_dir, year, case_type, judge_type, interval = parse_argv()
-    if year is None or case_type is None or court_end is None:
-        parser.print_help()
-        exit(0)
-    # debug_args()
+
     working_dir = data_dir + os.sep + str(year) + os.sep + case_type + "_" + judge_type
     file_handler = logging.FileHandler(data_dir + os.sep + "log.log")
     file_handler.setFormatter(formatter)  # 可以通过setFormatter指定输出格式
@@ -142,18 +144,18 @@ def continue_crawl(spider, info, working_dir):
     total_count = info['total_count']
     next_docid = info['next_docid']
     next_area = info['next_area']
-    retries = 1
+    retries = 2
     crawled_num = 0
     while True:  # do not use totalCount for boundary
         ts = int(time.time() * 1000)
         try:
             content = spider.get_detail(next_idx, total_count, court_id, next_area, next_docid)
             crawled_num += 1
-            retries = 1
+            retries = 2
         except:
             sys.stderr.write(" get_detail error####### remaining: %d retries\n" %retries)
             logger.exception(" get_detail error####### remaining: %d retries\n" %retries)
-            time.sleep(30)
+            time.sleep(20)
             if retries:
                 retries -= 1
                 continue  # re-crawl if http exception
@@ -267,8 +269,27 @@ def prepare_crawl(spider, court_id):
     sys.stdout.write(" \tcourt:%d  get_list : total count=>%d\n"%(court_id, total_count))
     return info
 
+def shutdown():
+    if poweroff:
+        sysstr = platform.system()
+        if (sysstr == "Windows"):
+            os.system("shutdown -s -t 1")
+        elif (sysstr == "Linux"):
+            os.system("poweroff")
+        else:
+            pass
+
 
 if __name__ == '__main__':
+
+    court_start, court_end, verbose, data_dir, year, case_type, judge_type, interval, poweroff = parse_argv()
+    if year is None or case_type is None or court_end is None:
+        parser.print_help()
+        exit(0)
+    debug_args(False)
+
+    atexit.register(shutdown)
+
     main()
 
 

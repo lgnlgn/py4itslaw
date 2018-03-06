@@ -52,8 +52,8 @@ class ItslawRequester:
         self.year = str(year)
         self.judge_type = str(judge_type)
         if proxy_str:
-            pass
-            # self.proxy = {proxy_str.split(":")[0] : proxy_str}
+            print("proxy enable!")
+            self.proxy = {proxy_str.split(":")[0] : proxy_str}
         with open('headers.txt') as f:
             self.head = f.read()
 
@@ -116,3 +116,16 @@ class ItslawRequester:
         resp = ul.urlopen(req)
         html = self.__decompress(resp)
         return html
+
+    def test_req(self, url):
+        req = ul.Request(url )
+        if self.proxy:
+            print("------------====")
+            proxy_support = ul.ProxyHandler(self.proxy)
+            opener = ul.build_opener(proxy_support)
+            ul.install_opener(opener)
+        resp = ul.urlopen(req)
+        data= resp.read()
+        if type(data) == bytes:
+            return str(data, encoding="utf-8")
+        return data
