@@ -1,9 +1,9 @@
 #coding=utf-8
 import gzip
-import  sys
-import json
 import time
-v = sys.version_info[0]
+
+from utils import v
+from utils import load_header
 if v == 2:
     from StringIO import StringIO
     import urllib2 as ul
@@ -54,10 +54,9 @@ class ItslawRequester:
         if proxy_str:
             print("proxy enable!")
             self.proxy = {proxy_str.split(":")[0] : proxy_str}
-        with open('headers.txt') as f:
-            self.head = f.read()
 
-        self.send_headers = dict([h.strip().split(":", 1) for h in self.head.strip().split('\n')])
+        self.send_headers = load_header()
+
 
     def get_detail(self, index, count, court_id, area, doc_id):
         index, count, doc_id, court_id, area = map(str, (index, count, doc_id, court_id, area))
@@ -101,7 +100,10 @@ class ItslawRequester:
                 data = gzip.decompress(data).decode("utf-8")
             return data
         elif type(data) == bytes:
-            return str(data, encoding = "utf-8")
+            if v == 2:
+                return str(data)
+            else:
+                return str(data, encoding='utf-8')
         return data
 
     def __req(self, url, ref):
@@ -113,12 +115,13 @@ class ItslawRequester:
             proxy_support = ul.ProxyHandler(self.proxy)
             opener = ul.build_opener(proxy_support)
             ul.install_opener(opener)
+
         resp = ul.urlopen(req)
         html = self.__decompress(resp)
         return html
 
-    def test_req(self, url):
-        req = ul.Request(url )
+    def test_req(self, url, encoding = 'utf-8'):
+        req = ul.Request(url)
         if self.proxy:
             print("------------====")
             proxy_support = ul.ProxyHandler(self.proxy)
@@ -127,5 +130,8 @@ class ItslawRequester:
         resp = ul.urlopen(req)
         data= resp.read()
         if type(data) == bytes:
-            return str(data, encoding="utf-8")
+            if v == 2:
+                return str(data)
+            else:
+                return str(data, encoding=encoding)
         return data

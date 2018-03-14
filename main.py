@@ -1,15 +1,16 @@
 #coding=utf-8
 
-import sys
-import os
+
 import json
-import time
 import atexit
 import platform
 import logging
+
+from utils import *
+
 from Request import ItslawRequester
-from Request import v
 from optparse import OptionParser
+
 
 data_dir = os.getcwd()
 
@@ -44,7 +45,6 @@ def parse_argv():
     parser.add_option("-i","--interval",action = "store", default = 1000, type="int",dest = "interval", metavar="INTERVAL", help="set crawling INTERVAL ms , [default = 1000]")
     parser.add_option("-p","--poweroff",action = "store_true",dest = "poweroff", default=False, help="set it to poweroff whether task finished or error occured")
 
-
     if len(sys.argv) == 1:
         parser.print_help()
 
@@ -62,19 +62,19 @@ def parse_argv():
     data_dir = os.getcwd() if options.data_dir is None else options.data_dir
     if year is None or year > time.gmtime()[0] or year < 1995:
         sys.stderr.write('!!! <year> format error! Allows integer between [1995, now] \n')
-        return [None] * 8
+        return [None] * 9
     if court_end > 3568 or court_end < 0:
         sys.stderr.write('!!! court_end value error! it must between [1, 3568] \n')
-        return [None] * 8
+        return [None] * 9
     if judge_type is None or case_type is None:
         sys.stderr.write('!!! <caseType>  <judgeType> needs to be set \n')
-        return [None] * 8
+        return [None] * 9
     if interval <= 0:
         sys.stdout.write('(interval <= 0)?!  Set it to the default (1000 ms) \n')
     return court_start, court_end, verbose, data_dir, year, case_type, judge_type, interval, poweroff
 
 
-def debug_args(exit0 = True):
+def debug_args(exit0=True):
     sys.stdout.write("court_start\t%s\n"% court_start)
     sys.stdout.write("court_end\t%s\n"% court_end)
     sys.stdout.write("verbose  \t%s\n"% verbose)
@@ -130,6 +130,7 @@ def main():
             sys.stdout.write("continue crawl: %s \n" % str(info))
             continue_crawl(spider, info, working_dir)           # continue crawling from info
         court_id += 1
+
     # special courts 3647: 北京专利法院
     for court_id in [3647, 3690, 3691]:
         create_info(working_dir, court_id)
@@ -160,6 +161,7 @@ def continue_crawl(spider, info, working_dir):
                 retries -= 1
                 continue  # re-crawl if http exception
             else:
+                logger.exception(" spider fetch error")
                 raise RuntimeError(' spider fetch error !!%d '%retries)
 
         doc = json.loads(content)
@@ -183,74 +185,14 @@ def continue_crawl(spider, info, working_dir):
             break
 
         next_idx += 1
-        if crawled_num % 200 == 0:
-            sys.stdout.write("sleep a while!\n")
-            time.sleep(30)
+        if crawled_num % 100 == 0:
+            sys.stdout.write("sleep a while & update local header!\n")
+            update_header('.')
+            time.sleep(10)
         ii = int(time.time() * 1000) - ts
         time.sleep(0 if ii > interval else (interval - ii)/1000.0)  #  sleep a while
-
-
-def update_info( info, next_docid, next_area):
-    """updates info; +1 to idx then save {} to info.txt"""
-    info['next_docid'] = next_docid
-    info['next_area'] = next_area
-    info['next_idx'] += 1
-    info['finished_idx'] += 1
-    return info
-
-
-def flush_info(writing_dir, info):
-    court_id = info['court_id']
-    f = open(writing_dir + os.sep + str(court_id) + os.sep + "info.txt", 'w')
-    f.write(str(info))
-    f.close()
-
-
-def write_down(writing_dir, content, next_idx):
-    block_id = int((next_idx - 1) / LINES_PER_BLOCK)
-    if v == 2:
-        f = open(writing_dir + os.sep + str(block_id), 'a')
-    else:
-        f = open(writing_dir + os.sep + str(block_id), 'a', encoding='utf-8')
-    f.write(content + "\n")
-    f.close()
-
-
-def get_last_court(working_dir):
-    """
-        get max_court_id & create a new info.txt
-    """
-
-    courts = os.listdir(working_dir)
-    if len(courts) == 0:
-        return 0
-    # get last court
-    return max(map(int, filter(str.isdigit, courts)))   # check again without else
-
-
-def create_info(working_dir, court_id):
-    court_dir = working_dir + os.sep + str(court_id)
-    info_path = court_dir + os.sep + "info.txt"
-    if not os.path.isdir(court_dir):
-        os.mkdir(court_dir)   # ensure dir exits
-    if not os.path.isfile(info_path):
-        ci = {}
-        ci.update(crawling_info)
-        ci['court_id'] = court_id
-        flush_info(working_dir, ci)
-
-
-def read_info(working_dir, court_id):
-    """ reads from info.txt"""
-    court_dir = working_dir + os.sep + str(court_id)
-    info_path = court_dir + os.sep + "info.txt"
-    if not os.path.isdir(court_dir) or not os.path.isfile(info_path):
-        return None
-    f = open(info_path)
-    cc = eval(f.read())
-    f.close()
-    return cc
-
+    #finished
+    update_header('.')
 
 def prepare_crawl(spider, court_id):
     list_result = spider.get_list(court_id)
@@ -269,13 +211,14 @@ def prepare_crawl(spider, court_id):
     sys.stdout.write(" \tcourt:%d  get_list : total count=>%d\n"%(court_id, total_count))
     return info
 
+
 def shutdown():
     if poweroff:
         sysstr = platform.system()
         if (sysstr == "Windows"):
-            os.system("shutdown -s -t 1")
+            os.system("shutdown -s -t 30")
         elif (sysstr == "Linux"):
-            os.system("poweroff")
+            os.system("shutdown -t 5 1")
         else:
             pass
 
@@ -287,6 +230,10 @@ if __name__ == '__main__':
         parser.print_help()
         exit(0)
     debug_args(False)
+
+    if ck_deprecated():
+        sys.stdout.write(" FATAL! Cookie expired!   Reset headers.txt first!")
+        exit(0)
 
     atexit.register(shutdown)
 
