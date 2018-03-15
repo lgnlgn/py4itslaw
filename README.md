@@ -19,7 +19,7 @@ A simple python crawler for www.itslaw.com
 
 * 准备
 
-使用浏览器打开https://www.itslaw.com; F12取出请求头按 headers.txt格式复制粘贴进去。
+使用浏览器打开https://www.itslaw.com; F12取出请求头按 headers.txt格式复制粘贴进去，*每次开启任务都必须修改一次Cookie字段*。
 
 * 基本用法
 

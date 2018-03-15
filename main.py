@@ -156,6 +156,7 @@ def continue_crawl(spider, info, working_dir):
         except:
             sys.stderr.write(" get_detail error####### remaining: %d retries\n" %retries)
             logger.exception(" get_detail error####### remaining: %d retries\n" %retries)
+            update_header()
             time.sleep(20)
             if retries:
                 retries -= 1
@@ -187,12 +188,12 @@ def continue_crawl(spider, info, working_dir):
         next_idx += 1
         if crawled_num % 100 == 0:
             sys.stdout.write("sleep a while & update local header!\n")
-            update_header('.')
+            update_header()
             time.sleep(10)
         ii = int(time.time() * 1000) - ts
         time.sleep(0 if ii > interval else (interval - ii)/1000.0)  #  sleep a while
     #finished
-    update_header('.')
+    update_header()
 
 def prepare_crawl(spider, court_id):
     list_result = spider.get_list(court_id)

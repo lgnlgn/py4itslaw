@@ -11,9 +11,7 @@ else:
     import urllib.request as ul
 
 
-
-
-class ItslawRequester:
+class ItslawRequester(object):
     head = '''
     Accept:application/json, text/plain, */*
     Accept-Encoding:gzip, deflate, sdch, br
@@ -56,7 +54,6 @@ class ItslawRequester:
             self.proxy = {proxy_str.split(":")[0] : proxy_str}
 
         self.send_headers = load_header()
-
 
     def get_detail(self, index, count, court_id, area, doc_id):
         index, count, doc_id, court_id, area = map(str, (index, count, doc_id, court_id, area))
@@ -115,7 +112,6 @@ class ItslawRequester:
             proxy_support = ul.ProxyHandler(self.proxy)
             opener = ul.build_opener(proxy_support)
             ul.install_opener(opener)
-
         resp = ul.urlopen(req)
         html = self.__decompress(resp)
         return html

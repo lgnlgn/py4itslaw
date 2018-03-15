@@ -3,7 +3,7 @@ import os
 import sys
 
 v = sys.version_info[0]
-header_file = '/headers.txt'
+header_file = 'headers.txt'
 LINES_PER_BLOCK = 100
 TIME_EXPIRE_SEC = 1800
 crawling_info = {'court_id': 0,'total_count': -1, 'finished_idx': 0, 'next_idx': 0, 'next_docid': '', 'next_area': '0'}
@@ -17,10 +17,10 @@ def load_header():
 
 def update_header():
     headers = load_header()
+    headers['time'] =  str(int(time.time()))
     with open(header_file, 'w') as f:
         for k, v in headers.items():
             f.write("%s:%s\n" % (k, v))
-        f.write("time:%s\n" % str(int(time.time())))
 
 
 def update_info( info, next_docid, next_area):
