@@ -50,7 +50,7 @@ def write_down(writing_dir, content, next_idx):
     f.close()
 
 
-def get_last_court(working_dir):
+def get_minmax_courts(working_dir):
     """
         get max_court_id & create a new info.txt
     """
@@ -59,7 +59,8 @@ def get_last_court(working_dir):
     if len(courts) == 0:
         return 0
     # get last court
-    return max(map(int, filter(str.isdigit, courts)))   # check again without else
+    already_downed = map(int, filter(str.isdigit, courts))
+    return min(already_downed), max(already_downed)   # check again without else
 
 
 def create_info(working_dir, court_id):

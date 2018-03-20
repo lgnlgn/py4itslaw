@@ -48,7 +48,8 @@ def parse_argv():
     if len(sys.argv) == 1:
         parser.print_help()
 
-    global court_start, court_end, verbose, data_dir, year, case_type, judge_type, interval, poweroff
+    global court_start, verbose, data_dir, year, case_type, judge_type, interval, poweroff
+    global  court_end
     (options, args) = parser.parse_args()
     court_start = options.court_start
     court_end = options.court_end
@@ -63,8 +64,8 @@ def parse_argv():
     if year is None or year > time.gmtime()[0] or year < 1995:
         sys.stderr.write('!!! <year> format error! Allows integer between [1995, now] \n')
         return [None] * 9
-    if court_end > 3568 or court_end < 0:
-        sys.stderr.write('!!! court_end value error! it must between [1, 3568] \n')
+    if court_end >= 3568 or court_end < 0 or court_start < 0 or court_start > court_end:
+        sys.stderr.write('!!! court_start || court_end values error! they must between [1, 3568] \n')
         return [None] * 9
     if judge_type is None or case_type is None:
         sys.stderr.write('!!! <caseType>  <judgeType> needs to be set \n')
@@ -102,8 +103,10 @@ def main():
 
     spider = ItslawRequester(year, case_type, judge_type)
 
-    court_id = get_last_court(working_dir)
-    while court_id <= court_end:  # we will use a court-mapping in the future
+    cmin, cmax = get_minmax_courts(working_dir)
+    court_id = max(cmin, court_start)
+    court_boundary = min(cmax, court_end)
+    while court_id <= court_boundary:  # we will use a court-mapping in the future
         if court_id == 0:         # only happens at the first time
             sys.stdout.write(" first time of [%s , %s]\n" %(year, case_type))
             court_id = court_start   # go to next loop
