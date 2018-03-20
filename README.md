@@ -19,7 +19,7 @@ A simple python crawler for www.itslaw.com
 
 * 准备
 
-每次启动前，使用浏览器打开https://www.itslaw.com; 访问页面后，F12取出请求头按 headers.txt格式复制粘贴进去，**每次开启任务都必须手动修改一次Cookie字段，不改容易被发现而封禁IP**。
+每次启动前，使用浏览器打开https://www.itslaw.com; 访问页面后，F12取出请求头按 headers.txt格式复制粘贴进去，**每次开启任务都必须手动修改一次Cookie字段(已经进行强制检查)**。如果最新Cookie还是没过，就修改headers中的time值到当前timestamp即可。
 
 * 基本用法
 
