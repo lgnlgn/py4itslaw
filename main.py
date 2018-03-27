@@ -64,8 +64,8 @@ def parse_argv():
     if year is None or year > time.gmtime()[0] or year < 1995:
         sys.stderr.write('!!! <year> format error! Allows integer between [1995, now] \n')
         return [None] * 9
-    if court_end >= 3568 or court_end < 0 or court_start < 0 or court_start > court_end:
-        sys.stderr.write('!!! court_start || court_end values error! they must between [1, 3568] \n')
+    if court_end > 3568 or court_end < 0 or court_start < 0 or court_start > court_end:
+        sys.stderr.write('!!! court_start || court_end values error! they must between [1, 3568]. got: %d,%d \n' % (court_start, court_end))
         return [None] * 9
     if judge_type is None or case_type is None:
         sys.stderr.write('!!! <caseType>  <judgeType> needs to be set \n')
@@ -120,11 +120,11 @@ def main():
         if info['total_count'] == -1:
             try:
                 info = prepare_crawl(spider, court_id) # get list
+                flush_info(working_dir, info)
+                sys.stdout.write("prepare_crawl: %d \n" % court_id)
             except:
                 logger.error("prepare_crawl error!! retrying")
-                time.sleep(30)
-                info = prepare_crawl(spider, court_id)  # get list
-            flush_info(working_dir, info)
+                time.sleep(10)
             continue
             # continue_crawl(spider, info, working_dir)           # start crawling from info
         elif info['total_count'] == info['finished_idx'] or info['next_docid'] == '-':  # already finished
@@ -133,7 +133,7 @@ def main():
             sys.stdout.write("continue crawl: %s \n" % str(info))
             continue_crawl(spider, info, working_dir)           # continue crawling from info
         court_id += 1
-
+    logger.info("finished crawling: %d -> %d \n" % court_id, court_boundary)
     # special courts 3647: 北京专利法院
     for court_id in [3647, 3690, 3691]:
         create_info(working_dir, court_id)
@@ -179,11 +179,10 @@ def continue_crawl(spider, info, working_dir):
         flush_info(working_dir, info)
 
         if verbose:
-            sys.stdout.write("%d\t%s\n"%(next_idx, next_docid))
+            sys.stdout.write("%d\tnext:%s\n"%(next_idx, next_docid))
 
         if next_docid == '-':
             sys.stdout.write("court:%d\tfinished ! #docs:  %d -> %d \n" %(court_id, total_count, next_idx))
-            info[total_count] = next_idx
             if next_idx < total_count:
                 logger.warning("court:%d\tfinished ! #docs:  %d -> %d \n" % (court_id, total_count, next_idx))
             break
@@ -194,9 +193,10 @@ def continue_crawl(spider, info, working_dir):
             update_header()
             time.sleep(10)
         ii = int(time.time() * 1000) - ts
-        time.sleep(0 if ii > interval else (interval - ii)/1000.0)  #  sleep a while
+        time.sleep(0 if ii > interval else (interval - ii)/1000.0)  # sleep a while
     #finished
     update_header()
+
 
 def prepare_crawl(spider, court_id):
     list_result = spider.get_list(court_id)
@@ -212,7 +212,7 @@ def prepare_crawl(spider, court_id):
     info['finished_idx'] = 0
     info['total_count'] = total_count
     info['next_area'] = page_area
-    sys.stdout.write(" \tcourt:%d  get_list : total count=>%d\n"%(court_id, total_count))
+    logger.info(" \tcourt:%d  get_list : total count=>%d\n"%(court_id, total_count))
     return info
 
 

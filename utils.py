@@ -5,7 +5,7 @@ import sys
 v = sys.version_info[0]
 header_file = 'headers.txt'
 LINES_PER_BLOCK = 100
-TIME_EXPIRE_SEC = 1800
+TIME_EXPIRE_SEC = 3600
 crawling_info = {'court_id': 0,'total_count': -1, 'finished_idx': 0, 'next_idx': 0, 'next_docid': '', 'next_area': '0'}
 
 
@@ -54,12 +54,11 @@ def get_minmax_courts(working_dir):
     """
         get max_court_id & create a new info.txt
     """
-
     courts = os.listdir(working_dir)
     if len(courts) == 0:
-        return 0
+        return 0, 3568
     # get last court
-    already_downed = map(int, filter(str.isdigit, courts))
+    already_downed = list(map(int, filter(str.isdigit, courts)))
     return min(already_downed), max(already_downed)   # check again without else
 
 
@@ -89,11 +88,12 @@ def read_info(working_dir, court_id):
 
 def ck_deprecated():
     headers = load_header()
-    tm =  headers.get('time')
-    if tm is None:
-        cookies = headers.setdefault("Cookie","Hm_lpvt_e496ad63f9a0581b5e13ab0975484c5c=1520693568").split('; ')
-        vv = filter(lambda x : x[1].isdigit(),  [x.split('=') for x in cookies])
-        for v in vv :
-            tm = v[1]
-    tm = tm if tm else '1520693568'
+    tm = headers.get('time')
+    tm2 = tm
+    cookies = headers.setdefault("Cookie","Hm_lpvt_e496ad63f9a0581b5e13ab0975484c5c=1520693568").split('; ')
+    vv = filter(lambda x : x[1].isdigit(),  [x.split('=') for x in cookies])
+    for v in vv :
+        tm2 = v[1]
+
+    tm = max(tm, tm2) if tm else tm2
     return True if time.time() - int(tm) > TIME_EXPIRE_SEC else False
