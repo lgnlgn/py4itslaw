@@ -104,8 +104,8 @@ def main():
     spider = ItslawRequester(year, case_type, judge_type)
 
     cmin, cmax = get_minmax_courts(working_dir)
-    court_id = max(cmin, court_start)
-    court_boundary = min(cmax, court_end)
+    court_id = max(cmax, court_start)
+    court_boundary = max(cmax, court_end)
     while court_id <= court_boundary:  # we will use a court-mapping in the future
         if court_id == 0:         # only happens at the first time
             sys.stdout.write(" first time of [%s , %s]\n" %(year, case_type))
@@ -133,13 +133,14 @@ def main():
             sys.stdout.write("continue crawl: %s \n" % str(info))
             continue_crawl(spider, info, working_dir)           # continue crawling from info
         court_id += 1
-    logger.info("finished crawling: %d -> %d \n" % court_id, court_boundary)
+    logger.info("finished crawling: %d -> %d \n" % (court_id, court_boundary))
     # special courts 3647: 北京专利法院
     for court_id in [3647, 3690, 3691]:
         create_info(working_dir, court_id)
         info = prepare_crawl(spider, court_id)
         flush_info(working_dir, info)
-        continue_crawl(spider, info, working_dir)
+        if info['total_count'] > 0:
+            continue_crawl(spider, info, working_dir)
 
 
 def continue_crawl(spider, info, working_dir):
