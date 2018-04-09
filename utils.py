@@ -86,6 +86,12 @@ def read_info(working_dir, court_id):
     return cc
 
 
+def current_progress(working_dir):
+    a,b = get_minmax_courts(working_dir)
+    info = read_info(working_dir, b)
+    return str(b) + str(info)
+
+
 def ck_deprecated():
     headers = load_header()
     tm = headers.get('time')

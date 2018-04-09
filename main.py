@@ -1,6 +1,6 @@
 #coding=utf-8
 
-
+import subprocess
 import json
 import atexit
 import platform
@@ -13,7 +13,7 @@ from optparse import OptionParser
 
 
 data_dir = os.getcwd()
-
+os.chdir(data_dir)
 LINES_PER_BLOCK = 100
 court_start = 1
 court_end = 3568
@@ -24,6 +24,7 @@ crawling_info = {'court_id': 0,'total_count': -1, 'finished_idx': 0, 'next_idx':
 verbose = True
 interval = 1000
 poweroff = False
+
 
 logger = logging.getLogger("itslaw_crawler")
 formatter = logging.Formatter('%(asctime)s %(levelname)-8s: %(message)s')
@@ -161,7 +162,7 @@ def continue_crawl(spider, info, working_dir):
             sys.stderr.write(" get_detail error####### remaining: %d retries\n" %retries)
             logger.exception(" get_detail error####### remaining: %d retries\n" %retries)
             update_header()
-            time.sleep(20)
+            time.sleep(10)
             if retries:
                 retries -= 1
                 continue  # re-crawl if http exception
@@ -234,14 +235,46 @@ if __name__ == '__main__':
     if year is None or case_type is None or court_end is None:
         parser.print_help()
         exit(0)
-    debug_args(False)
-
     if ck_deprecated():
         sys.stdout.write(" FATAL! Cookie expired!   Reset headers.txt first!")
         exit(0)
 
-    atexit.register(shutdown)
+    args_str = ' '.join(sys.argv[:])
+    sys.stdout.write(args_str + "\n")
+    if args_str.count(" main_crawling_process") > 0:
+        sys.stdout.write(" main crawling ")
+        debug_args(False)
+        main()
+    else:
+        atexit.register(shutdown)  ##register shutdown
+        sys.stdout.write(" DAEMON PROCESS ENTERED ")
+        args_str += " main_crawling_process"
+        crawl_proc = subprocess.Popen("python " + args_str)
+        terminal = crawl_proc.poll()
+        last_cp = current_progress("%s/%s/%s_%s" % (data_dir, year, case_type, judge_type))
+        last_tick = time.time()
+        try:
+            while terminal is None:
+                cp = current_progress("%s/%s/%s_%s" % (data_dir, year, case_type, judge_type))
+                if cp == last_cp:
+                    c_tick = time.time() ##
+                    if c_tick - last_tick > 60:## stuck
+                        logger.error("found crawler stuck. kill it!")
+                        crawl_proc.kill()
+                        break
+                    else:
+                        pass # not stuck
+                else: # {info} not equals : re-check
+                    last_tick = time.time()
+                time.sleep(interval * 2)
+                terminal = crawl_proc.poll()
+        except:
+            logger.error("KeyboardInterrupt")
+        finally:
+            logger.warning("KeyboardInterrupt")
+            crawl_proc.kill()
 
-    main()
+
+
 
 
