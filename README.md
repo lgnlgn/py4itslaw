@@ -14,6 +14,8 @@ A simple python crawler for www.itslaw.com
 
 一个抓取itslaw 法律文书的简单爬虫
 
+**本repo不再维护, 转到http://www.gitee.com/lgnlgn/py4itslaw**
+
 
 ### py4itslaw如何使用？
 

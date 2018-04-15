@@ -5,6 +5,7 @@ import json
 import atexit
 import platform
 import logging
+import traceback
 
 from utils import *
 
@@ -14,7 +15,8 @@ from optparse import OptionParser
 
 data_dir = os.getcwd()
 os.chdir(data_dir)
-LINES_PER_BLOCK = 100
+NUM_TO_SLEEP = 100
+SLEEP_SEC = 10
 court_start = 1
 court_end = 3568
 year = 2015
@@ -125,7 +127,7 @@ def main():
                 sys.stdout.write("prepare_crawl: %d \n" % court_id)
             except:
                 logger.error("prepare_crawl error!! retrying")
-                time.sleep(10)
+                time.sleep(SLEEP_SEC)
             continue
             # continue_crawl(spider, info, working_dir)           # start crawling from info
         elif info['total_count'] == info['finished_idx'] or info['next_docid'] == '-':  # already finished
@@ -162,7 +164,7 @@ def continue_crawl(spider, info, working_dir):
             sys.stderr.write(" get_detail error####### remaining: %d retries\n" %retries)
             logger.exception(" get_detail error####### remaining: %d retries\n" %retries)
             update_header()
-            time.sleep(10)
+            time.sleep(SLEEP_SEC)
             if retries:
                 retries -= 1
                 continue  # re-crawl if http exception
@@ -190,10 +192,10 @@ def continue_crawl(spider, info, working_dir):
             break
 
         next_idx += 1
-        if crawled_num % 100 == 0:
+        if crawled_num % NUM_TO_SLEEP == 0:
             sys.stdout.write("sleep a while & update local header!\n")
             update_header()
-            time.sleep(10)
+            time.sleep(SLEEP_SEC)
         ii = int(time.time() * 1000) - ts
         time.sleep(0 if ii > interval else (interval - ii)/1000.0)  # sleep a while
     #finished
@@ -229,6 +231,32 @@ def shutdown():
             pass
 
 
+def start_and_watch(data_dir, year, case_type, judge_type, args_str):
+
+
+    terminal = crawl_proc.poll()
+    last_cp = current_progress("%s/%s/%s_%s" % (data_dir, year, case_type, judge_type))
+    last_tick = time.time()
+    cc = 0
+    while terminal is None:
+        cp = current_progress("%s/%s/%s_%s" % (data_dir, year, case_type, judge_type))
+        if cp == last_cp:
+            c_tick = time.time()  ##
+            if c_tick - last_tick > 100:  ## stuck
+                daemon_f.write("stay %d \t [%s] finished!\n" % (cc, time.asctime()))
+                break
+            else:
+                daemon_f.write("check %d \t [%s]\n" % (cc, time.asctime()))
+                daemon_f.flush()
+                cc += 1
+                pass  # not stuck
+        else:  # {info} not equals : re-check
+            last_tick = time.time()
+            cc = 0
+        last_cp = cp
+        time.sleep(interval * 2 / 1000.0)
+        terminal = crawl_proc.poll()
+
 if __name__ == '__main__':
 
     court_start, court_end, verbose, data_dir, year, case_type, judge_type, interval, poweroff = parse_argv()
@@ -246,33 +274,62 @@ if __name__ == '__main__':
         debug_args(False)
         main()
     else:
-        atexit.register(shutdown)  ##register shutdown
         sys.stdout.write(" DAEMON PROCESS ENTERED ")
+        atexit.register(shutdown)  ##register shutdown
+        daemon_f = open(data_dir + "/daemon.log", 'w')
         args_str += " main_crawling_process"
         crawl_proc = subprocess.Popen("python " + args_str)
-        terminal = crawl_proc.poll()
-        last_cp = current_progress("%s/%s/%s_%s" % (data_dir, year, case_type, judge_type))
-        last_tick = time.time()
-        try:
-            while terminal is None:
-                cp = current_progress("%s/%s/%s_%s" % (data_dir, year, case_type, judge_type))
-                if cp == last_cp:
-                    c_tick = time.time() ##
-                    if c_tick - last_tick > 60:## stuck
-                        logger.error("found crawler stuck. kill it!")
-                        crawl_proc.kill()
-                        break
-                    else:
-                        pass # not stuck
-                else: # {info} not equals : re-check
-                    last_tick = time.time()
-                time.sleep(interval * 2)
-                terminal = crawl_proc.poll()
-        except:
-            logger.error("KeyboardInterrupt")
-        finally:
-            logger.warning("KeyboardInterrupt")
-            crawl_proc.kill()
+        if v == 2:
+            try:
+                start_and_watch(data_dir, year, case_type, judge_type, args_str)
+            except Exception:
+                logger.exception('error !', exc_info=True)
+            finally:
+                logger.warning("KeyboardInterrupt")
+                crawl_proc.kill()
+                daemon_f.close()
+        else:
+            try:
+                start_and_watch(data_dir, year, case_type, judge_type, args_str)
+            except Exception as e:
+                logger.exception('error !', exc_info=e)
+            finally:
+                logger.warning("KeyboardInterrupt")
+                crawl_proc.kill()
+                daemon_f.close()
+
+        # daemon_f = open(data_dir + "/daemon.log", 'w')
+        # args_str += " main_crawling_process"
+        # crawl_proc = subprocess.Popen("python " + args_str)
+        # terminal = crawl_proc.poll()
+        # last_cp = current_progress("%s/%s/%s_%s" % (data_dir, year, case_type, judge_type))
+        # last_tick = time.time()
+        # cc = 0
+        # try:
+        #     while terminal is None:
+        #         cp = current_progress("%s/%s/%s_%s" % (data_dir, year, case_type, judge_type))
+        #         if cp == last_cp:
+        #             c_tick = time.time() ##
+        #             if c_tick - last_tick > 100:## stuck
+        #                 daemon_f.write("stay %d \t [%s] finished!\n" % (cc, time.asctime()))
+        #                 break
+        #             else:
+        #                 daemon_f.write("check %d \t [%s]\n" % (cc ,time.asctime()))
+        #                 daemon_f.flush()
+        #                 cc += 1
+        #                 pass # not stuck
+        #         else: # {info} not equals : re-check
+        #             last_tick = time.time()
+        #             cc = 0
+        #         last_cp = cp
+        #         time.sleep(interval * 2 / 1000.0)
+        #         terminal = crawl_proc.poll()
+        # except Exception:
+        #     logger.exception('error !', exc_info=True)
+        # finally:
+        #     logger.warning("KeyboardInterrupt")
+        #     crawl_proc.kill()
+        #     daemon_f.close()
 
 
 

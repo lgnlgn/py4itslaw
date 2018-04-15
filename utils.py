@@ -80,16 +80,21 @@ def read_info(working_dir, court_id):
     info_path = court_dir + os.sep + "info.txt"
     if not os.path.isdir(court_dir) or not os.path.isfile(info_path):
         return None
-    f = open(info_path)
-    cc = eval(f.read())
-    f.close()
-    return cc
+    while True:
+        try:
+            f = open(info_path)
+            cc = eval(f.read())
+            f.close()
+            return cc
+        except:
+            sys.stdout.write(" read info error !!!!!! sleep 50ms")
+            time.sleep(0.05)
 
 
 def current_progress(working_dir):
     a,b = get_minmax_courts(working_dir)
     info = read_info(working_dir, b)
-    return str(b) + str(info)
+    return str(info)
 
 
 def ck_deprecated():
