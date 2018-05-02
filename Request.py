@@ -1,14 +1,6 @@
 #coding=utf-8
-import gzip
-import time
+from utils import *
 
-from utils import v
-from utils import load_header
-if v == 2:
-    from StringIO import StringIO
-    import urllib2 as ul
-else:
-    import urllib.request as ul
 
 
 class ItslawRequester(object):
@@ -72,6 +64,7 @@ class ItslawRequester(object):
         return self.__req(detail_url, detail_ref)
 
     def get_case(self):
+        """no use"""
         case_url = self.case_url_tpl.replace('$0', self.year).replace('$1', self.case_type).replace('$2', self.judge_type)
         case_ref = self.case_ref_tpl.replace('$0', self.year).replace('$1', self.case_type).replace('$2', self.judge_type)
         print(case_url)
@@ -106,15 +99,8 @@ class ItslawRequester(object):
     def __req(self, url, ref):
         heade = dict(self.send_headers)
         heade['Referer'] = ref
-        #print(heade)
-        req = ul.Request(url, headers= heade)
-        if self.proxy:
-            proxy_support = ul.ProxyHandler(self.proxy)
-            opener = ul.build_opener(proxy_support)
-            ul.install_opener(opener)
-        resp = ul.urlopen(req)
-        html = self.__decompress(resp)
-        return html
+        return request_with_proxy(url, heade, self.proxy)
+
 
     def test_req(self, url, encoding = 'utf-8'):
         req = ul.Request(url)

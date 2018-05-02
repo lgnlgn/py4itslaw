@@ -1,8 +1,17 @@
 import time
 import os
 import sys
-
+import gzip
 v = sys.version_info[0]
+
+if v == 2:
+    from StringIO import StringIO
+    import urllib2 as ul
+else:
+    import urllib.request as ul
+
+
+
 header_file = 'headers.txt'
 LINES_PER_BLOCK = 100
 TIME_EXPIRE_SEC = 3600
@@ -48,7 +57,6 @@ def write_down(writing_dir, content, next_idx):
         f = open(writing_dir + os.sep + str(block_id), 'a', encoding='utf-8')
     f.write(content + "\n")
     f.close()
-
 
 def get_minmax_courts(working_dir):
     """
@@ -108,3 +116,30 @@ def ck_deprecated():
 
     tm = max(tm, tm2) if tm else tm2
     return True if time.time() - int(tm) > TIME_EXPIRE_SEC else False
+
+def decompress_response(response):
+        data = response.read() # reads
+        if response.info().get('Content-Encoding') == 'gzip':
+            if v == 2:
+                buf = StringIO(data)
+                f = gzip.GzipFile(fileobj=buf)
+                data = f.read()
+            else:
+                data = gzip.decompress(data).decode("utf-8")
+            return data
+        elif type(data) == bytes:
+            if v == 2:
+                return str(data)
+            else:
+                return str(data, encoding='utf-8')
+        return data
+
+
+def request_with_proxy(url, add_headers = {}, proxy = {}):
+    req = ul.Request(url, headers=add_headers)
+    if proxy:
+        proxy_support = ul.ProxyHandler(proxy)
+        opener = ul.build_opener(proxy_support)
+        ul.install_opener(opener)
+    resp = ul.urlopen(req, timeout=60)
+    return decompress_response(resp)
