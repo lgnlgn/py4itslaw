@@ -263,9 +263,10 @@ if __name__ == '__main__':
     if year is None or case_type is None or court_end is None:
         parser.print_help()
         exit(0)
-    if ck_deprecated():
-        sys.stdout.write(" FATAL! Cookie expired!   Reset headers.txt first!")
-        exit(0)
+    # if ck_deprecated():
+    #     sys.stdout.write(" FATAL! Cookie expired!   Reset headers.txt first!")
+    #     exit(0)
+
 
     args_str = ' '.join(sys.argv[:])
     sys.stdout.write(args_str + "\n")
@@ -274,6 +275,7 @@ if __name__ == '__main__':
         debug_args(False)
         main()
     else:
+        fetch_cookie()
         sys.stdout.write(" DAEMON PROCESS ENTERED ")
         atexit.register(shutdown)  ##register shutdown
         daemon_f = open(data_dir + "/daemon.log", 'w')
@@ -298,38 +300,6 @@ if __name__ == '__main__':
                 crawl_proc.kill()
                 daemon_f.close()
 
-        # daemon_f = open(data_dir + "/daemon.log", 'w')
-        # args_str += " main_crawling_process"
-        # crawl_proc = subprocess.Popen("python " + args_str)
-        # terminal = crawl_proc.poll()
-        # last_cp = current_progress("%s/%s/%s_%s" % (data_dir, year, case_type, judge_type))
-        # last_tick = time.time()
-        # cc = 0
-        # try:
-        #     while terminal is None:
-        #         cp = current_progress("%s/%s/%s_%s" % (data_dir, year, case_type, judge_type))
-        #         if cp == last_cp:
-        #             c_tick = time.time() ##
-        #             if c_tick - last_tick > 100:## stuck
-        #                 daemon_f.write("stay %d \t [%s] finished!\n" % (cc, time.asctime()))
-        #                 break
-        #             else:
-        #                 daemon_f.write("check %d \t [%s]\n" % (cc ,time.asctime()))
-        #                 daemon_f.flush()
-        #                 cc += 1
-        #                 pass # not stuck
-        #         else: # {info} not equals : re-check
-        #             last_tick = time.time()
-        #             cc = 0
-        #         last_cp = cp
-        #         time.sleep(interval * 2 / 1000.0)
-        #         terminal = crawl_proc.poll()
-        # except Exception:
-        #     logger.exception('error !', exc_info=True)
-        # finally:
-        #     logger.warning("KeyboardInterrupt")
-        #     crawl_proc.kill()
-        #     daemon_f.close()
 
 
 

@@ -2,6 +2,8 @@ import time
 import os
 import sys
 import gzip
+
+
 v = sys.version_info[0]
 
 if v == 2:
@@ -24,8 +26,9 @@ def load_header():
     return dict([h.strip().split(":", 1) for h in hh.strip().split('\n')])
 
 
-def update_header():
-    headers = load_header()
+def update_header(headers = {}):
+    if not headers:
+        headers = load_header()
     headers['time'] =  str(int(time.time()))
     with open(header_file, 'w') as f:
         for k, v in headers.items():
@@ -134,12 +137,29 @@ def decompress_response(response):
                 return str(data, encoding='utf-8')
         return data
 
-
-def request_with_proxy(url, add_headers = {}, proxy = {}):
+def get_resp(url, add_headers = {}, proxy = {}):
+    """cookies added to headers"""
     req = ul.Request(url, headers=add_headers)
     if proxy:
         proxy_support = ul.ProxyHandler(proxy)
         opener = ul.build_opener(proxy_support)
         ul.install_opener(opener)
-    resp = ul.urlopen(req, timeout=60)
-    return decompress_response(resp)
+    return ul.urlopen(req, timeout=60)
+
+
+def request_with_proxy(url, add_headers = {}, proxy = {}):
+    return decompress_response(get_resp(url, add_headers, proxy))
+
+
+def fetch_cookie(proxy = {}):
+    headers = load_header()
+    resp = get_resp('https://www.itslaw.com/api/v1/users/user/loginInfo', headers, proxy= proxy)
+    new_cookie = resp.info()['set-cookie']
+    old_cookie = headers['Cookie']
+    sys.stdout.write("%s => %s\n" % (old_cookie, new_cookie))
+    new_cookies = dict([kv.strip().split("=") for kv  in  new_cookie.split(';')])
+    old_cookies = dict([kv.strip().split("=") for kv  in  old_cookie.split(';')])
+    new_cookies.pop("Path")
+    old_cookies.update(new_cookies)
+    headers['Cookie'] = '; '.join(["%s=%s" % d for d in old_cookies.items()])
+    update_header(headers)
