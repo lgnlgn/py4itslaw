@@ -99,7 +99,7 @@ def read_info(working_dir, court_id):
             return cc
         except:
             sys.stdout.write(" read info error !!!!!! sleep 50ms")
-            time.sleep(0.05)
+            time.sleep(0.02)
 
 
 def current_progress(working_dir):
