@@ -35,6 +35,7 @@ usage = "main.py [-y <year>][-t <caseType>][-j <judgeType>][-d [dir]][-s [courtS
 parser= OptionParser(usage)
 # 文件日志
 
+proxy_enable = False
 
 def parse_argv():
 
@@ -52,7 +53,7 @@ def parse_argv():
         parser.print_help()
 
     global court_start, verbose, data_dir, year, case_type, judge_type, interval, poweroff
-    global  court_end
+    global court_end
     (options, args) = parser.parse_args()
     court_start = options.court_start
     court_end = options.court_end
@@ -104,7 +105,7 @@ def main():
     if not os.path.isdir(working_dir):
         os.makedirs(working_dir)
 
-    spider = ItslawRequester(year, case_type, judge_type)
+    spider = ItslawRequester(year, case_type, judge_type, proxy_enable)
 
     cmin, cmax = get_minmax_courts(working_dir)
     court_id = max(cmax, court_start)
@@ -120,13 +121,15 @@ def main():
             create_info(working_dir, court_id )
             continue
 
-        if info['total_count'] == -1:
+        if info['total_count'] == -1: #just newed
             try:
                 info = prepare_crawl(spider, court_id) # get list
                 flush_info(working_dir, info)
                 sys.stdout.write("prepare_crawl: %d \n" % court_id)
-            except:
-                logger.error("prepare_crawl error!! retrying")
+            except Exception as e:
+                sys.stdout.write("prepare_crawl: %d \n" + repr(e))
+                # logger.error("prepare_crawl error!! retrying " + repr(e))
+                logger.error('traceback.format_exc():\n%s' % traceback.format_exc())
                 time.sleep(SLEEP_SEC)
             continue
             # continue_crawl(spider, info, working_dir)           # start crawling from info
@@ -233,7 +236,6 @@ def shutdown():
 
 def start_and_watch(data_dir, year, case_type, judge_type, args_str):
 
-
     terminal = crawl_proc.poll()
     last_cp = current_progress("%s/%s/%s_%s" % (data_dir, year, case_type, judge_type))
     last_tick = time.time()
@@ -257,24 +259,31 @@ def start_and_watch(data_dir, year, case_type, judge_type, args_str):
         time.sleep(interval * 2 / 1000.0)
         terminal = crawl_proc.poll()
 
+
+def mkdirs(*auguments):
+    paths = [os.sep.join(auguments[0:k]) for k in range(1,len(auguments) + 1)]
+    for p in paths :
+        if not os.path.isdir(p):
+            os.mkdir(p)
+
 if __name__ == '__main__':
 
     court_start, court_end, verbose, data_dir, year, case_type, judge_type, interval, poweroff = parse_argv()
     if year is None or case_type is None or court_end is None:
         parser.print_help()
         exit(0)
-    # if ck_deprecated():
-    #     sys.stdout.write(" FATAL! Cookie expired!   Reset headers.txt first!")
-    #     exit(0)
-
 
     args_str = ' '.join(sys.argv[:])
     sys.stdout.write(args_str + "\n")
+
+    mkdirs(data_dir, str(year), case_type + "_" + judge_type)
+
     if args_str.count(" main_crawling_process") > 0:
         sys.stdout.write(" main crawling ")
         debug_args(False)
         main()
     else:
+
         fetch_cookie()
         sys.stdout.write(" DAEMON PROCESS ENTERED ")
         atexit.register(shutdown)  ##register shutdown

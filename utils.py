@@ -15,7 +15,7 @@ else:
 
 
 header_file = 'headers.txt'
-LINES_PER_BLOCK = 100
+LINES_PER_BLOCK = 500
 TIME_EXPIRE_SEC = 3600
 crawling_info = {'court_id': 0,'total_count': -1, 'finished_idx': 0, 'next_idx': 0, 'next_docid': '', 'next_area': '0'}
 
@@ -67,7 +67,7 @@ def get_minmax_courts(working_dir):
     """
     courts = os.listdir(working_dir)
     if len(courts) == 0:
-        return 0, 3568
+        return 0, 1
     # get last court
     already_downed = list(map(int, filter(str.isdigit, courts)))
     return min(already_downed), max(already_downed)   # check again without else
@@ -120,22 +120,25 @@ def ck_deprecated():
     tm = max(tm, tm2) if tm else tm2
     return True if time.time() - int(tm) > TIME_EXPIRE_SEC else False
 
+
 def decompress_response(response):
-        data = response.read() # reads
-        if response.info().get('Content-Encoding') == 'gzip':
-            if v == 2:
-                buf = StringIO(data)
-                f = gzip.GzipFile(fileobj=buf)
-                data = f.read()
-            else:
-                data = gzip.decompress(data).decode("utf-8")
-            return data
-        elif type(data) == bytes:
-            if v == 2:
-                return str(data)
-            else:
-                return str(data, encoding='utf-8')
+    data = response.read() # reads
+    if response.info().get('Content-Encoding') == 'gzip':
+        if v == 2:
+            buf = StringIO(data)
+            f = gzip.GzipFile(fileobj=buf)
+            data = f.read()
+        else:
+            data = gzip.decompress(data).decode("utf-8")
         return data
+    elif type(data) == bytes:
+        if v == 2:
+            return str(data)
+        else:
+            return str(data, 'utf-8')
+    else:
+        return data
+
 
 def get_resp(url, add_headers = {}, proxy = {}):
     """cookies added to headers"""
@@ -148,7 +151,9 @@ def get_resp(url, add_headers = {}, proxy = {}):
 
 
 def request_with_proxy(url, add_headers = {}, proxy = {}):
-    return decompress_response(get_resp(url, add_headers, proxy))
+    resp = get_resp(url, add_headers, proxy)
+    result = decompress_response(resp)
+    return result
 
 
 def fetch_cookie(proxy = {}):
@@ -157,9 +162,13 @@ def fetch_cookie(proxy = {}):
     new_cookie = resp.info()['set-cookie']
     old_cookie = headers['Cookie']
     sys.stdout.write("%s => %s\n" % (old_cookie, new_cookie))
-    new_cookies = dict([kv.strip().split("=") for kv  in  new_cookie.split(';')])
-    old_cookies = dict([kv.strip().split("=") for kv  in  old_cookie.split(';')])
-    new_cookies.pop("Path")
-    old_cookies.update(new_cookies)
-    headers['Cookie'] = '; '.join(["%s=%s" % d for d in old_cookies.items()])
-    update_header(headers)
+    if not new_cookie is None: #new session
+        new_cookies = dict([kv.strip().split("=") for kv  in  new_cookie.split(';')])
+        old_cookies = dict([kv.strip().split("=") for kv  in  old_cookie.split(';')])
+        new_cookies.pop("Path")
+        old_cookies.update(new_cookies)
+        headers['Cookie'] = '; '.join(["%s=%s" % d for d in old_cookies.items()])
+        update_header(headers)
+
+if __name__ == '__main__':
+    fetch_cookie()

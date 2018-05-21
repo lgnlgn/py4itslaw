@@ -26,38 +26,41 @@ chinaz_headers = {'User-Agent': user_agent,
 
 filename = 'cookie.txt'
 # 声明一个MozillaCookieJar对象实例来保存cookie，之后写入文件
-cjar = http.cookiejar.CookieJar()
+# cjar = http.cookiejar.CookieJar()
 # 利用urllib2库的HTTPCookieProcessor对象来创建cookie处理器
-cookie_handler = ul.HTTPCookieProcessor(cjar)
-
-proxy_handler = ul.ProxyHandler({"http":"http://60.177.231.0:18118"})
-
-# 通过handler来构建opener
-opener = ul.build_opener(cookie_handler, proxy_handler)
-# 创建一个请求，原理同urllib2的urlopen
-
-req = ul.Request("https://www.itslaw.com/api/v1/users/user/loginInfo", headers = {})
-#req = ul.Request("http://ip.chinaz.com/getip.aspx", headers= headers)
-
-ul.install_opener(opener)
-resp = ul.urlopen(req, timeout=30)
+# cookie_handler = ul.HTTPCookieProcessor(cjar)
+#
+# proxy_handler = ul.ProxyHandler({"http":"http://60.177.231.0:18118"})
+#
+# # 通过handler来构建opener
+# opener = ul.build_opener(cookie_handler, proxy_handler)
+# # 创建一个请求，原理同urllib2的urlopen
+#
+# req = ul.Request("https://www.itslaw.com/api/v1/users/user/loginInfo", headers = {})
+# #req = ul.Request("http://ip.chinaz.com/getip.aspx", headers= headers)
+#
+# ul.install_opener(opener)
+# resp = ul.urlopen(req, timeout=30)
 
 #ss = requests.Session()
-#resp = ss.get("http://ip.chinaz.com/getip.aspx",proxies = {"http":"http://49.79.192.21:61234"}  , timeout=30)
-#resp = requests.get("http://ip.chinaz.com/getip.aspx", headers= chinaz_headers ,
-#                   proxies = {"http":"49.79.192.21:61234"}, verify = True , timeout=30)
+resp = requests.get("http://ip.chinaz.com/getip.aspx",proxies = {"http":"http://125.126.161.199:32679"}  , timeout=30)
+#resp = requests.get("http://ip.chinaz.com/getip.aspx", headers= chinaz_headers , verify = True , timeout=30)
 
 
 
-resphead = resp.info()
-print(resphead)
-data = resp.read()
-# data = resp.content
+# resphead = resp.info()
+resphead = resp.headers
+# print(resphead)
+# data = resp.read()
+data = resp.content
+
 print(data)
-if 'gzip' in resphead['Content-Encoding']:
-    data = gzip.decompress(data)
+print(resphead)
+
+# if 'gzip' in resphead['Content-Encoding']:
+#     data = gzip.decompress(data)
 
 print(str(data, encoding='utf-8'))
-print(cjar)
+
 
 

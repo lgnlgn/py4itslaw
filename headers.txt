@@ -1,11 +1,10 @@
-Accept:application/json, text/plain, */*
+Connection:keep-alive
+Referer:https://www.itslaw.com/detail?judgementId=90991853-d6f1-4f21-89a2-4efec58983fe&area=1&index=1&sortType=1&count=2&conditions=searchWord%2B%E5%8D%97%E5%AE%81%E6%B3%95%E9%99%A2%2B1%2B%E5%8D%97%E5%AE%81%E6%B3%95%E9%99%A2&conditions=keyword%2B18880%2B3%2B%E5%80%9F%E8%B4%B7
+If-Modified-Since:Mon, 26 Jul 1997 05:00:00 GMT
+time:1526910768
 Accept-Encoding:gzip, deflate, sdch, br
 Accept-Language:zh-CN,zh;q=0.8
+User-Agent:Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.104 Safari/537.36 Core/1.53.4620.400 QQBrowser/9.7.13014.400
 Cache-Control:no-cache
-Connection:keep-alive
-Cookie:gr_user_id=0080c460-e7be-41d8-9ce4-f247b19862d6; _t=b7065309-3770-4089-ae45-30181e30e5dd; showSubSiteTip=false; Hm_lvt_e496ad63f9a0581b5e13ab0975484c5c=1516972878,1517321067,1517926132; Hm_lpvt_e496ad63f9a0581b5e13ab0975484c5c=1517926132; gr_session_id_8d9004219d790ea8=a0d21b2a-0029-4471-96d3-84a3798a0eac; sessionId=fd392941-1cc8-4873-9f22-c46536aedbe8; subSiteCode=bj
 Host:www.itslaw.com
-If-Modified-Since:Mon, 26 Jul 1997 05:00:00 GMT
-Pragma:no-cache
-Referer:https://www.itslaw.com/bj
-User-Agent:Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.104 Safari/537.36 Core/1.53.4549.400 QQBrowser/9.7.12900.400
+Cookie:gr_session_id_8d9004219d790ea8=b94ff40a-3841-4954-93f2-3e88322ed96e_true; sessionId=77939177-1804-481f-870f-1841067dfe23; Hm_lvt_e496ad63f9a0581b5e13ab0975484c5c=1525138593,1525224147,1525589110; _t=4d3d5bcc-aa23-4f8f-a389-c08fab21bc3e; Hm_lpvt_e496ad63f9a0581b5e13ab0975484c5c=1525596153; gr_user_id=0b1a34be-2c27-4eac-9767-db00749e0a7a

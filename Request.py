@@ -1,6 +1,6 @@
 #coding=utf-8
 from utils import *
-
+from proxy_tool import *
 
 
 class ItslawRequester(object):
@@ -35,15 +35,15 @@ class ItslawRequester(object):
 
     send_headers = dict()
 
-    proxy = {}
+    proxy_pool = None
 
     def __init__(self, year, case_type, judge_type, proxy_str=''):
         self.case_type = str(case_type)
         self.year = str(year)
         self.judge_type = str(judge_type)
         if proxy_str:
+            self.proxy_pool = ProxyPool()
             print("proxy enable!")
-            self.proxy = {proxy_str.split(":")[0] : proxy_str}
 
         self.send_headers = load_header()
 
@@ -79,41 +79,39 @@ class ItslawRequester(object):
         # print(list_ref)
         return self.__req(list_url, list_ref)
 
-    def __decompress(self, response):
-        data = response.read() # reads
-        if response.info().get('Content-Encoding') == 'gzip':
-            if v == 2:
-                buf = StringIO(data)
-                f = gzip.GzipFile(fileobj=buf)
-                data = f.read()
-            else:
-                data = gzip.decompress(data).decode("utf-8")
-            return data
-        elif type(data) == bytes:
-            if v == 2:
-                return str(data)
-            else:
-                return str(data, encoding='utf-8')
-        return data
+    # def __decompress(self, response):
+    #     data = response.read() # reads
+    #     if response.info().get('Content-Encoding') == 'gzip':
+    #         if v == 2:
+    #             buf = StringIO(data)
+    #             f = gzip.GzipFile(fileobj=buf)
+    #             data = f.read()
+    #         else:
+    #             data = gzip.decompress(data).decode("utf-8")
+    #         return data
+    #     elif type(data) == bytes:
+    #         if v == 2:
+    #             return str(data)
+    #         else:
+    #             return str(data, encoding='utf-8')
+    #     return data
 
     def __req(self, url, ref):
         heade = dict(self.send_headers)
         heade['Referer'] = ref
-        return request_with_proxy(url, heade, self.proxy)
+        if self.proxy_pool : #failed because of HTTPS
+            proxy = self.proxy_pool.get_random()
+            while proxy:
+                try:
+                    result = request_with_proxy(url, heade, {'http': proxy})
+                    self.proxy_pool.confirm_success(proxy)
+                    sys.stdout.write(proxy + "\t")
+                    return result
+                except :
+                    self.proxy_pool.confirm_fail(proxy)
+                time.sleep(2)
+                proxy = self.proxy_pool.get_random()
 
+        else:
+            return request_with_proxy(url, heade) #raise exception out
 
-    def test_req(self, url, encoding = 'utf-8'):
-        req = ul.Request(url)
-        if self.proxy:
-            print("------------====")
-            proxy_support = ul.ProxyHandler(self.proxy)
-            opener = ul.build_opener(proxy_support)
-            ul.install_opener(opener)
-        resp = ul.urlopen(req)
-        data= resp.read()
-        if type(data) == bytes:
-            if v == 2:
-                return str(data)
-            else:
-                return str(data, encoding=encoding)
-        return data

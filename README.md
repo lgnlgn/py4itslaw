@@ -6,7 +6,7 @@ A simple python crawler for www.itslaw.com
 
 在写爬虫期间，发现itslaw也有防机制，会直接封禁IP（猜测是抓了多久就封多久，抓1天封1天，又或者是抓多少条封多少秒），所以只做了单线程并且默认每个请求延迟1秒。
 
-整个网站的文书按 年\裁判类型\文书类型 的组合切分出每次任务，欢迎大家一起使用，合力抓下全部文书。
+整个网站的文书按 年\裁判类型\文书类型 的组合切分出每次任务，欢迎大家一起使用，合力抓下全部文书。（因为尝试代理，以及没使用requests包，导致里面有很多废代码）
 ```
 
 
@@ -19,9 +19,6 @@ A simple python crawler for www.itslaw.com
 
 ### py4itslaw如何使用？
 
-* 准备
-
-每次启动前，使用浏览器打开https://www.itslaw.com; 访问页面后，F12取出请求头按 headers.txt格式复制粘贴进去，**每次开启任务都必须手动修改一次Cookie字段(已经进行强制检查)**。如果最新Cookie还是没过，就修改headers中的time值到当前timestamp即可。
 
 * 基本用法
 
@@ -44,6 +41,7 @@ A simple python crawler for www.itslaw.com
                         set court_id ENDS from , [default = 3568]
   -i INTERVAL, --interval=INTERVAL
                         set crawling INTERVAL ms , [default = 1000]
+  -p, --poweroff        set it to poweroff whether task finished or error occured
 ```
 
 
@@ -59,4 +57,5 @@ A simple python crawler for www.itslaw.com
  
 ### 改进的方向
 1. 遍历法院id方式，目前采用法院id从1~3568方式抓取。而上很多年份（2010年前）、类型下的文书不足，统计后法院并无3500个。因此可以改成根据caseFile中的regionResult实际情况来抓取（起初设计也是这样，但后来发现很多法院缺少id, 需要补全所有法院的id）
-2. 支持代理
+2. 代理研究（失败，https能知道你IP）
+3. 改成requests请求而不用urllib
