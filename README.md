@@ -44,6 +44,8 @@ A simple python crawler for www.itslaw.com
   -p, --poweroff        set it to poweroff whether task finished or error occured
 ```
 
+**可以看run.bat  run2.bat**
+
 
 * 参数解释
 
