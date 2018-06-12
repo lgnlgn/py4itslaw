@@ -37,6 +37,7 @@ parser= OptionParser(usage)
 
 proxy_enable = False
 
+
 def parse_argv():
 
     parser.add_option("-d", "--dir",action="store", metavar="DIR",type="string", dest="data_dir", help="data directory for saving [default = .]")
@@ -44,8 +45,8 @@ def parse_argv():
     parser.add_option("-y","--year",action = "store",type="int",dest = "year", metavar="YEAR",  help="set year, e.g. 2015")
     parser.add_option("-t","--case",action = "store", type="choice",dest = "case_type", choices = ['1','2','3','4'], metavar="CASETYPE",  help=u"set caseType, in [1,2,3,4], 民事刑事行政执行")
     parser.add_option("-j","--judge",action = "store", type="choice",dest = "judge_type", choices = ['1','2','3','4','5'], metavar="JUDGETYPE",  help=u"set judgeType, in [1,2,3,4,5], 判决裁定通知决定调解")
-    parser.add_option("-s","--start",action = "store",default = 1,type="int",dest = "court_start", metavar="COURT_START" ,help="set court_id STARTS from max(COURT_START, already_done), [default = 1] ")
-    parser.add_option("-e","--end",action = "store", default = 3568, type="int",dest = "court_end", metavar="COURT_END", help="set court_id ENDS from , [default = 3568]")
+    # parser.add_option("-s","--start",action = "store",default = 1,type="int",dest = "court_start", metavar="COURT_START" ,help="set court_id STARTS from max(COURT_START, already_done), [default = 1] ")
+    # parser.add_option("-e","--end",action = "store", default = 3568, type="int",dest = "court_end", metavar="COURT_END", help="set court_id ENDS from , [default = 3568]")
     parser.add_option("-i","--interval",action = "store", default = 1000, type="int",dest = "interval", metavar="INTERVAL", help="set crawling INTERVAL ms , [default = 1000]")
     parser.add_option("-p","--poweroff",action = "store_true",dest = "poweroff", default=False, help="set it to poweroff whether task finished or error occured")
 
@@ -55,8 +56,8 @@ def parse_argv():
     global court_start, verbose, data_dir, year, case_type, judge_type, interval, poweroff
     global court_end
     (options, args) = parser.parse_args()
-    court_start = options.court_start
-    court_end = options.court_end
+    # court_start = options.court_start
+    # court_end = options.court_end
     case_type = options.case_type
     year = options.year
     verbose = options.verbose
@@ -68,9 +69,9 @@ def parse_argv():
     if year is None or year > time.gmtime()[0] or year < 1995:
         sys.stderr.write('!!! <year> format error! Allows integer between [1995, now] \n')
         return [None] * 9
-    if court_end > 3568 or court_end < 0 or court_start < 0 or court_start > court_end:
-        sys.stderr.write('!!! court_start || court_end values error! they must between [1, 3568]. got: %d,%d \n' % (court_start, court_end))
-        return [None] * 9
+    # if court_end > 3568 or court_end < 0 or court_start < 0 or court_start > court_end:
+    #     sys.stderr.write('!!! court_start || court_end values error! they must between [1, 3568]. got: %d,%d \n' % (court_start, court_end))
+    #     return [None] * 9
     if judge_type is None or case_type is None:
         sys.stderr.write('!!! <caseType>  <judgeType> needs to be set \n')
         return [None] * 9
@@ -80,8 +81,6 @@ def parse_argv():
 
 
 def debug_args(exit0=True):
-    sys.stdout.write("court_start\t%s\n"% court_start)
-    sys.stdout.write("court_end\t%s\n"% court_end)
     sys.stdout.write("verbose  \t%s\n"% verbose)
     sys.stdout.write("data_dir\t%s\n"% data_dir)
     sys.stdout.write("year    \t%s\n"% year)
@@ -96,6 +95,7 @@ def debug_args(exit0=True):
 def main():
 
     working_dir = data_dir + os.sep + str(year) + os.sep + case_type + "_" + judge_type
+    year_dir = data_dir + os.sep + str(year)
     file_handler = logging.FileHandler(data_dir + os.sep + "log.log")
     file_handler.setFormatter(formatter)  # 可以通过setFormatter指定输出格式
     logger.addHandler(file_handler)
@@ -107,46 +107,42 @@ def main():
 
     spider = ItslawRequester(year, case_type, judge_type, proxy_enable)
 
-    cmin, cmax = get_minmax_courts(working_dir)
-    court_id = max(cmax, court_start)
-    court_boundary = max(cmax, court_end)
-    while court_id <= court_boundary:  # we will use a court-mapping in the future
-        if court_id == 0:         # only happens at the first time
-            sys.stdout.write(" first time of [%s , %s]\n" %(year, case_type))
-            court_id = court_start   # go to next loop
-            continue
-        info = read_info(working_dir, court_id)
-        if info is None:         # new court
-            sys.stdout.write(" new court : %d  \n" %( court_id ))
-            create_info(working_dir, court_id )
-            continue
+    crawl_courts(data_dir, year, case_type, judge_type, spider)
 
-        if info['total_count'] == -1: #just newed
-            try:
-                info = prepare_crawl(spider, court_id) # get list
-                flush_info(working_dir, info)
-                sys.stdout.write("prepare_crawl: %d \n" % court_id)
-            except Exception as e:
-                sys.stdout.write("prepare_crawl: %d \n" + repr(e))
-                # logger.error("prepare_crawl error!! retrying " + repr(e))
-                logger.error('traceback.format_exc():\n%s' % traceback.format_exc())
-                time.sleep(SLEEP_SEC)
-            continue
-            # continue_crawl(spider, info, working_dir)           # start crawling from info
-        elif info['total_count'] == info['finished_idx'] or info['next_docid'] == '-':  # already finished
-            pass
-        else:
-            sys.stdout.write("continue crawl: %s \n" % str(info))
-            continue_crawl(spider, info, working_dir)           # continue crawling from info
+    court_id = fetch_court( year_dir, case_type, judge_type)
+    while court_id != 0:  # we will use a court-mapping in the future
+        dir_info = read_info(working_dir, court_id)
+        if dir_info is None or dir_info['next_docid'] == '-': #just new or re-crawl-task
+            dir_info = prepare_crawl(spider, court_id)  # get list
+            flush_info(working_dir, dir_info)
+        sys.stdout.write('now :\n%s'%court_id)
+        continue_crawl(spider, dir_info, working_dir)           # continue crawling from info
+        save_courts(year_dir, case_type, judge_type, dir_info, True)
+
+        court_id = fetch_court(year_dir, case_type, judge_type)
+
+
+def crawl_courts(data_dir, year, case_type, judge_type, spider):
+    year_dir = data_dir + os.sep + str(year)
+    court_id = fetch_court(year_dir, case_type, judge_type, goto_end =True)
+    while court_id < 3569:
         court_id += 1
-    logger.info("finished crawling: %d -> %d \n" % (court_id, court_boundary))
-    # special courts 3647: 北京专利法院
-    for court_id in [3647, 3690, 3691]:
-        create_info(working_dir, court_id)
+        try:
+            ts = int(time.time() * 1000)
+            info = prepare_crawl(spider, court_id)
+            save_courts(year_dir, case_type, judge_type, info)
+            ii = int(time.time() * 1000) - ts
+            time.sleep(0 if ii > interval else (interval - ii) / 1000.0)  # sleep a while
+        except Exception:
+            sys.stdout.write("prepare_crawl :%d error: redo\n" % court_id)
+            time.sleep(5)
+            court_id -= 1
+
+    ncourts = [3569, 3647, 3690, 3691]
+    while ncourts.index( court_id) < len(ncourts) - 1 :
+        court_id = ncourts[ncourts.index( court_id) + 1]
         info = prepare_crawl(spider, court_id)
-        flush_info(working_dir, info)
-        if info['total_count'] > 0:
-            continue_crawl(spider, info, working_dir)
+        save_courts(year_dir, case_type, judge_type, info)
 
 
 def continue_crawl(spider, info, working_dir):

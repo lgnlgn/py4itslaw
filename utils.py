@@ -15,6 +15,7 @@ else:
 
 
 header_file = 'headers.txt'
+
 LINES_PER_BLOCK = 500
 TIME_EXPIRE_SEC = 3600
 crawling_info = {'court_id': 0,'total_count': -1, 'finished_idx': 0, 'next_idx': 0, 'next_docid': '', 'next_area': '0'}
@@ -78,11 +79,6 @@ def create_info(working_dir, court_id):
     info_path = court_dir + os.sep + "info.txt"
     if not os.path.isdir(court_dir):
         os.mkdir(court_dir)   # ensure dir exits
-    if not os.path.isfile(info_path):
-        ci = {}
-        ci.update(crawling_info)
-        ci['court_id'] = court_id
-        flush_info(working_dir, ci)
 
 
 def read_info(working_dir, court_id):
@@ -169,6 +165,60 @@ def fetch_cookie(proxy = {}):
         old_cookies.update(new_cookies)
         headers['Cookie'] = '; '.join(["%s=%s" % d for d in old_cookies.items()])
         update_header(headers)
+
+
+def save_courts(year_dir, case_type, judge_type, info, update = False):
+    courts_file = year_dir + os.sep + "%s_%s.court" %(case_type, judge_type)
+
+    if update:
+        f = open(courts_file)
+        lines = f.read().strip().split('\n')
+        for idx, line in enumerate(lines):
+            info_here = line.split('\t')
+            if int(info_here[0]) == info['court_id']:
+                sys.stdout.write("save: " + str(info['court_id']) + "\n")
+                sys.stdout.flush()
+                break
+        info_here[1] = str(info['finished_idx'])
+        info_here[4] = '1'
+        info_here[3] = "%.3f" % ((info['finished_idx'] if info['finished_idx'] > 0 else 0) / (float(info_here[2]) + 0.00000000000001))
+        lines[idx] = '\t'.join(info_here)
+        f.close()
+        f = open(courts_file, 'w')
+        f.write('\n'.join(lines) + "\n")
+        f.close()
+
+    else:
+        new_line = "%d\t%d\t%d\t%.3f\t0\n" % (info['court_id'], info['finished_idx'], info['total_count'],
+                                              (info['finished_idx'] if info['finished_idx'] > 0 else 0) / (
+                                              info['total_count'] + 0.00000000000001))
+        f = open(courts_file , 'a')
+        sys.stdout.write("save: " + str(info['court_id']) + "\n")
+        sys.stdout.flush()
+        f.write(new_line)
+        f.close()
+
+
+def fetch_court(year_dir, case_type, judge_type, goto_end = False):
+    courts_file = year_dir + os.sep + "%s_%s.court" % (case_type, judge_type)
+    if not os.path.isfile(courts_file):
+        f = open(courts_file, 'w')
+        f.close()
+    f = open(courts_file)
+    last_court = ''
+    for line in f:
+        court_id, fi, tc, ratio, fh = line.split()
+        # court_id, fi, tc, ratio,fh =
+        last_court = court_id
+        if fh == '0' and not goto_end:
+            return int(last_court)
+    f.close()
+    if last_court and goto_end: #for the crawl_courts()
+        return int(last_court)
+    elif last_court:  # for courtid boundary fetch
+        return 0
+    return 1 # not inited
+
 
 if __name__ == '__main__':
     fetch_cookie()

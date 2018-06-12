@@ -38,7 +38,7 @@ chinaz_headers = {'User-Agent': user_agent, 'Connection': 'keep-alive',
            }
 #
 def check_proxy_ok(*address):
-    proxy = {"http": 'http:' + ":".join(address[1:])}
+    proxy = {"http": 'https:' + ":".join(address[1:])}
     print(proxy)
     resp = requests.get("http://ip.chinaz.com/getip.aspx", headers = chinaz_headers, proxies = proxy, timeout = 20)
     resp = requests.get("http://www.ip111.cn/", headers=ip111_headers,
@@ -126,7 +126,8 @@ class ProxyPool(object):
             for ip_str in ips:
                 attr = re.findall(r'\<td>(.*?)\<\/td\>', ip_str)
                 protocal, host, port = attr[3].lower(), attr[0], attr[1]
-                proxy_tmp[protocal + "://" + host + ":" + port] = self.__RETRIES
+                if protocal == 'https':
+                    proxy_tmp[protocal + "://" + host + ":" + port] = self.__RETRIES
         sys.stdout.write("%d + %d = " %(len(self.proxies), len(proxy_tmp)))
         proxy_tmp.update(self.proxies)
         self.proxies = proxy_tmp
