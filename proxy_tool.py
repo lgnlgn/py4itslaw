@@ -1,7 +1,8 @@
+#coding=utf-8
 from utils import *
 import re
 import random
-import requests
+
 
 XICI_PAGES = 5;
 PROXY_POOL_FILE = "proxy_availables.txt"
@@ -40,21 +41,23 @@ chinaz_headers = {'User-Agent': user_agent, 'Connection': 'keep-alive',
 def check_proxy_ok(*address):
     proxy = {"http": 'https:' + ":".join(address[1:])}
     print(proxy)
-    resp = requests.get("http://ip.chinaz.com/getip.aspx", headers = chinaz_headers, proxies = proxy, timeout = 20)
-    resp = requests.get("http://www.ip111.cn/", headers=ip111_headers,
-                        proxies={address[0]: ":".join(address)}, timeout=20)
+    # resp = requests.get("http://ip.chinaz.com/getip.aspx", headers = chinaz_headers, proxies = proxy, timeout = 20)
+   # resp = requests.get("http://www.ip111.cn/", headers=ip111_headers,
+     #                   proxies={address[0]: ":".join(address)}, timeout=20)
 
-    # return_ip = request_with_proxy("http://ip.chinaz.com/getip.aspx", add_headers=chinaz_headers, proxy= {protocal: host + ":" + port})
-    return str(resp.content, 'utf-8')[1436:1469]
+    resp = request_with_proxy("http://www.ip111.cn/", add_headers=ip111_headers, proxy= {address[0]: ":".join(address)})
+    return resp[1436:1469]
+
 
 def c_ip111():
-    resp = requests.get("http://www.ip111.cn/", headers=ip111_headers, timeout=20)
-    print(resp.headers)
-    dd = str(resp.content, "utf-8")
+    resp = request_with_proxy("http://www.ip111.cn/", headers=ip111_headers, timeout=20)
+    print(resp)
+    dd = resp
     p = dd.index(u'国内网站')
     p2 = dd.index("</td>", p+6)
     print(p+19, p2)
     print(dd[1436:1469])
+
 
 class ProxyPool(object):
 

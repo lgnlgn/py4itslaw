@@ -114,7 +114,7 @@ def main():
         dir_info = read_info(working_dir, court_id)
         if dir_info is None or dir_info['next_docid'] == '-': #just new or re-crawl-task
             dir_info = prepare_crawl(spider, court_id)  # get list
-            flush_info(working_dir, dir_info)
+            flush_info(working_dir, dir_info, True)
         sys.stdout.write('now :\n%s'%court_id)
         continue_crawl(spider, dir_info, working_dir)           # continue crawling from info
         save_courts(year_dir, case_type, judge_type, dir_info, True)
@@ -162,7 +162,6 @@ def continue_crawl(spider, info, working_dir):
         except:
             sys.stderr.write(" get_detail error####### remaining: %d retries\n" %retries)
             logger.exception(" get_detail error####### remaining: %d retries\n" %retries)
-            update_header()
             time.sleep(SLEEP_SEC)
             if retries:
                 retries -= 1
@@ -193,12 +192,11 @@ def continue_crawl(spider, info, working_dir):
         next_idx += 1
         if crawled_num % NUM_TO_SLEEP == 0:
             sys.stdout.write("sleep a while & update local header!\n")
-            update_header()
             time.sleep(SLEEP_SEC)
         ii = int(time.time() * 1000) - ts
         time.sleep(0 if ii > interval else (interval - ii)/1000.0)  # sleep a while
     #finished
-    update_header()
+
 
 
 def prepare_crawl(spider, court_id):
@@ -233,11 +231,11 @@ def shutdown():
 def start_and_watch(data_dir, year, case_type, judge_type, args_str):
 
     terminal = crawl_proc.poll()
-    last_cp = current_progress("%s/%s/%s_%s" % (data_dir, year, case_type, judge_type))
+    last_cp = current_progress("%s/%s" % (data_dir, year), case_type, judge_type)
     last_tick = time.time()
     cc = 0
     while terminal is None:
-        cp = current_progress("%s/%s/%s_%s" % (data_dir, year, case_type, judge_type))
+        cp = current_progress("%s/%s" % (data_dir, year), case_type, judge_type)
         if cp == last_cp:
             c_tick = time.time()  ##
             if c_tick - last_tick > 100:  ## stuck

@@ -46,9 +46,16 @@ def update_info( info, next_docid, next_area):
     return info
 
 
-def flush_info(writing_dir, info):
+def flush_info(writing_dir, info, delete = False):
     court_id = info['court_id']
-    f = open(writing_dir + os.sep + str(court_id) + os.sep + "info.txt", 'w')
+    court_dir = writing_dir + os.sep + str(court_id)
+    if not os.path.isdir(court_dir):
+        os.mkdir(court_dir)
+    elif delete:
+        ffs = os.listdir(court_dir)
+        for ff in ffs:
+            os.remove(os.path.join(court_dir, ff))
+    f = open(court_dir + os.sep + "info.txt", 'w')
     f.write(str(info))
     f.close()
 
@@ -61,24 +68,6 @@ def write_down(writing_dir, content, next_idx):
         f = open(writing_dir + os.sep + str(block_id), 'a', encoding='utf-8')
     f.write(content + "\n")
     f.close()
-
-def get_minmax_courts(working_dir):
-    """
-        get max_court_id & create a new info.txt
-    """
-    courts = os.listdir(working_dir)
-    if len(courts) == 0:
-        return 0, 1
-    # get last court
-    already_downed = list(map(int, filter(str.isdigit, courts)))
-    return min(already_downed), max(already_downed)   # check again without else
-
-
-def create_info(working_dir, court_id):
-    court_dir = working_dir + os.sep + str(court_id)
-    info_path = court_dir + os.sep + "info.txt"
-    if not os.path.isdir(court_dir):
-        os.mkdir(court_dir)   # ensure dir exits
 
 
 def read_info(working_dir, court_id):
@@ -98,23 +87,11 @@ def read_info(working_dir, court_id):
             time.sleep(0.02)
 
 
-def current_progress(working_dir):
-    a,b = get_minmax_courts(working_dir)
-    info = read_info(working_dir, b)
+def current_progress(year_dir, case_type, judge_type):
+    court_id = fetch_court(year_dir, case_type, judge_type)
+    working_dir = "%s/%s_%s" % (year_dir, case_type, judge_type)
+    info = read_info(working_dir, court_id)
     return str(info)
-
-
-def ck_deprecated():
-    headers = load_header()
-    tm = headers.get('time')
-    tm2 = tm
-    cookies = headers.setdefault("Cookie","Hm_lpvt_e496ad63f9a0581b5e13ab0975484c5c=1520693568").split('; ')
-    vv = filter(lambda x : x[1].isdigit(),  [x.split('=') for x in cookies])
-    for v in vv :
-        tm2 = v[1]
-
-    tm = max(tm, tm2) if tm else tm2
-    return True if time.time() - int(tm) > TIME_EXPIRE_SEC else False
 
 
 def decompress_response(response):
@@ -155,7 +132,7 @@ def request_with_proxy(url, add_headers = {}, proxy = {}):
 def fetch_cookie(proxy = {}):
     headers = load_header()
     resp = get_resp('https://www.itslaw.com/api/v1/users/user/loginInfo', headers, proxy= proxy)
-    new_cookie = resp.info()['set-cookie']
+    new_cookie = resp.info().get('set-cookie')
     old_cookie = headers['Cookie']
     sys.stdout.write("%s => %s\n" % (old_cookie, new_cookie))
     if not new_cookie is None: #new session
@@ -210,7 +187,7 @@ def fetch_court(year_dir, case_type, judge_type, goto_end = False):
         court_id, fi, tc, ratio, fh = line.split()
         # court_id, fi, tc, ratio,fh =
         last_court = court_id
-        if fh == '0' and not goto_end:
+        if fh == '0' and not tc == '0' and not goto_end:
             return int(last_court)
     f.close()
     if last_court and goto_end: #for the crawl_courts()
