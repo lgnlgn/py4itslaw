@@ -22,7 +22,7 @@ A simple python crawler for www.itslaw.com
 
 * 基本用法
 
- Usage: main.py [-y <year>][-t <caseType>][-j <judgeType>][-d [dir]][-s [courtStart]][-e [courtEnd]][-v]
+ Usage: main.py [-y <year>][-t <caseType>][-j <judgeType>][-d [dir]][-v]
 
 * Options:
 ```
@@ -34,11 +34,6 @@ A simple python crawler for www.itslaw.com
                         set caseType, in [1,2,3,4], 民事、刑事、行政、执行
   -j JUDGETYPE, --judge=JUDGETYPE
                         set judgeType, in [1,2,3,4,5], 判决、裁定、通知、决定、调解
-  -s COURT_START, --start=COURT_START
-                        set court_id STARTS from max(COURT_START,
-                        already_done), [default = 1]
-  -e COURT_END, --end=COURT_END
-                        set court_id ENDS from , [default = 3568]
   -i INTERVAL, --interval=INTERVAL
                         set crawling INTERVAL ms , [default = 1000]
   -p, --poweroff        set it to poweroff whether task finished or error occured
@@ -53,11 +48,11 @@ A simple python crawler for www.itslaw.com
  
  爬虫启动之后会在`DIR`下创建 `YEAR/CASETYPE_JUDGETYPE` 目录
  
- 之后为每个法院创建目录开始抓取，法院id由`COURT_START`，`COURT_END`设置，按法院id升序顺序抓取它的文书
+ 之后为year/caseType_judgeType 抓取一个每个法院总数的大列表，之后按法院id升序顺序抓取它的文书，
+ 
+ 每个法院的文书全部抓取完成后，更新大列表（如果觉得抓取比例不对，可以重置完成状态功下次重抓）
  
  每抓取一篇文书会停留至多`INTERVAL`毫秒
  
 ### 改进的方向
-1. 遍历法院id方式，目前采用法院id从1~3568方式抓取。而上很多年份（2010年前）、类型下的文书不足，统计后法院并无3500个。因此可以改成根据caseFile中的regionResult实际情况来抓取（起初设计也是这样，但后来发现很多法院缺少id, 需要补全所有法院的id）
-2. 代理研究（失败，https能知道你IP）
-3. 改成requests请求而不用urllib
+1. 代理池
