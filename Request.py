@@ -1,5 +1,4 @@
 #coding=utf-8
-from utils import *
 from proxy_tool import *
 
 
@@ -37,11 +36,11 @@ class ItslawRequester(object):
 
     proxy_pool = None
 
-    def __init__(self, year, case_type, judge_type, proxy_str=''):
+    def __init__(self, year, case_type, judge_type, proxy_enable= False):
         self.case_type = str(case_type)
         self.year = str(year)
         self.judge_type = str(judge_type)
-        if proxy_str:
+        if proxy_enable:
             self.proxy_pool = ProxyPool()
             print("proxy enable!")
 
@@ -99,11 +98,11 @@ class ItslawRequester(object):
     def __req(self, url, ref):
         heade = dict(self.send_headers)
         heade['Referer'] = ref
-        if self.proxy_pool : #failed because of HTTPS
+        if self.proxy_pool :
             proxy = self.proxy_pool.get_random()
             while proxy:
                 try:
-                    result = request_with_proxy(url, heade, {'http': proxy})
+                    result = request_with_proxy(url, heade, {'https': proxy})
                     self.proxy_pool.confirm_success(proxy)
                     sys.stdout.write(proxy + "\t")
                     return result

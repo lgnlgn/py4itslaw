@@ -5,9 +5,10 @@ import json
 import atexit
 import platform
 import logging
-import traceback
+#import traceback
 
-from utils import *
+from proxy_tool import *
+#from utils import *
 
 from Request import ItslawRequester
 from optparse import OptionParser
@@ -17,8 +18,7 @@ data_dir = os.getcwd()
 os.chdir(data_dir)
 NUM_TO_SLEEP = 100
 SLEEP_SEC = 10
-court_start = 1
-court_end = 3568
+
 year = 2015
 case_type=2
 judge_type=1
@@ -45,49 +45,49 @@ def parse_argv():
     parser.add_option("-y","--year",action = "store",type="int",dest = "year", metavar="YEAR",  help="set year, e.g. 2015")
     parser.add_option("-t","--case",action = "store", type="choice",dest = "case_type", choices = ['1','2','3','4'], metavar="CASETYPE",  help=u"set caseType, in [1,2,3,4], 民事刑事行政执行")
     parser.add_option("-j","--judge",action = "store", type="choice",dest = "judge_type", choices = ['1','2','3','4','5'], metavar="JUDGETYPE",  help=u"set judgeType, in [1,2,3,4,5], 判决裁定通知决定调解")
+    parser.add_option("-p", "--proxy", action="store_true", dest="proxy", default=False, help="set it to enable proxy")
+
     # parser.add_option("-s","--start",action = "store",default = 1,type="int",dest = "court_start", metavar="COURT_START" ,help="set court_id STARTS from max(COURT_START, already_done), [default = 1] ")
     # parser.add_option("-e","--end",action = "store", default = 3568, type="int",dest = "court_end", metavar="COURT_END", help="set court_id ENDS from , [default = 3568]")
     parser.add_option("-i","--interval",action = "store", default = 1000, type="int",dest = "interval", metavar="INTERVAL", help="set crawling INTERVAL ms , [default = 1000]")
-    parser.add_option("-p","--poweroff",action = "store_true",dest = "poweroff", default=False, help="set it to poweroff whether task finished or error occured")
+    parser.add_option("-s","--shutdown",action = "store_true",dest = "poweroff", default=False, help="set it to poweroff whether task finished or interupted")
 
     if len(sys.argv) == 1:
         parser.print_help()
 
-    global court_start, verbose, data_dir, year, case_type, judge_type, interval, poweroff
-    global court_end
+    global verbose, data_dir, year, case_type, judge_type, interval, poweroff
+    global proxy_enable
     (options, args) = parser.parse_args()
-    # court_start = options.court_start
-    # court_end = options.court_end
     case_type = options.case_type
     year = options.year
     verbose = options.verbose
     judge_type = options.judge_type
     interval = options.interval
     poweroff = options.poweroff
+    proxy_enable = options.proxy
 
     data_dir = os.getcwd() if options.data_dir is None else options.data_dir
     if year is None or year > time.gmtime()[0] or year < 1995:
         sys.stderr.write('!!! <year> format error! Allows integer between [1995, now] \n')
-        return [None] * 9
-    # if court_end > 3568 or court_end < 0 or court_start < 0 or court_start > court_end:
-    #     sys.stderr.write('!!! court_start || court_end values error! they must between [1, 3568]. got: %d,%d \n' % (court_start, court_end))
-    #     return [None] * 9
+        return [None] * 8
     if judge_type is None or case_type is None:
         sys.stderr.write('!!! <caseType>  <judgeType> needs to be set \n')
-        return [None] * 9
+        return [None] * 8
     if interval <= 0:
         sys.stdout.write('(interval <= 0)?!  Set it to the default (1000 ms) \n')
-    return court_start, court_end, verbose, data_dir, year, case_type, judge_type, interval, poweroff
+    return proxy_enable, verbose, data_dir, year, case_type, judge_type, interval, poweroff
 
 
 def debug_args(exit0=True):
-    sys.stdout.write("verbose  \t%s\n"% verbose)
-    sys.stdout.write("data_dir\t%s\n"% data_dir)
-    sys.stdout.write("year    \t%s\n"% year)
-    sys.stdout.write("case_type\t%s\n"% case_type)
-    sys.stdout.write("judge_type\t%s\n"% judge_type)
-    sys.stdout.write("interval\t%s\n"% interval)
-    sys.stdout.write("poweroff\t%s\n" % poweroff)
+    sys.stdout.write("proxy_enable\t%s\n" % proxy_enable)
+    sys.stdout.write("verbose    \t%s\n"% verbose)
+    sys.stdout.write("data_dir   \t%s\n"% data_dir)
+    sys.stdout.write("year       \t%s\n"% year)
+    sys.stdout.write("case_type  \t%s\n"% case_type)
+    sys.stdout.write("judge_type \t%s\n"% judge_type)
+    sys.stdout.write("interval   \t%s\n"% interval)
+    sys.stdout.write("poweroff   \t%s\n" % poweroff)
+    sys.stdout.flush()
     if exit0:
         sys.exit(0)
 
@@ -115,7 +115,7 @@ def main():
         if dir_info is None or dir_info['next_docid'] == '-': #just new or re-crawl-task
             dir_info = prepare_crawl(spider, court_id)  # get list
             flush_info(working_dir, dir_info, True)
-        sys.stdout.write('now :\n%s'%court_id)
+        sys.stdout.write('now :%s\n'%court_id)
         continue_crawl(spider, dir_info, working_dir)           # continue crawling from info
         save_courts(year_dir, case_type, judge_type, dir_info, True)
 
@@ -228,11 +228,12 @@ def shutdown():
             pass
 
 
-def start_and_watch(data_dir, year, case_type, judge_type, args_str):
+def start_and_watch(data_dir, year, case_type, judge_type, proxy_pool = None):
 
     terminal = crawl_proc.poll()
     last_cp = current_progress("%s/%s" % (data_dir, year), case_type, judge_type)
     last_tick = time.time()
+    last_proxy_t = time.time()
     cc = 0
     while terminal is None:
         cp = current_progress("%s/%s" % (data_dir, year), case_type, judge_type)
@@ -249,6 +250,9 @@ def start_and_watch(data_dir, year, case_type, judge_type, args_str):
         else:  # {info} not equals : re-check
             last_tick = time.time()
             cc = 0
+        if proxy_pool and time.time() - last_proxy_t > 600:
+            proxy_pool.crawl()
+            last_proxy_t = time.time()
         last_cp = cp
         time.sleep(interval * 2 / 1000.0)
         terminal = crawl_proc.poll()
@@ -262,14 +266,13 @@ def mkdirs(*auguments):
 
 if __name__ == '__main__':
 
-    court_start, court_end, verbose, data_dir, year, case_type, judge_type, interval, poweroff = parse_argv()
-    if year is None or case_type is None or court_end is None:
+    proxy_enable, verbose, data_dir, year, case_type, judge_type, interval, poweroff = parse_argv()
+    if year is None or case_type is None:
         parser.print_help()
         exit(0)
 
     args_str = ' '.join(sys.argv[:])
     sys.stdout.write(args_str + "\n")
-
     mkdirs(data_dir, str(year), case_type + "_" + judge_type)
 
     if args_str.count(" main_crawling_process") > 0:
@@ -277,16 +280,20 @@ if __name__ == '__main__':
         debug_args(False)
         main()
     else:
-
-        fetch_cookie()
+        if proxy_enable:
+            pp = ProxyPool()
+            pp.crawl()
+        else:
+            pp = None
+        fetch_cookie(pp)
         sys.stdout.write(" DAEMON PROCESS ENTERED ")
         atexit.register(shutdown)  ##register shutdown
         daemon_f = open(data_dir + "/daemon.log", 'w')
         args_str += " main_crawling_process"
-        crawl_proc = subprocess.Popen("python " + args_str)
+        crawl_proc = subprocess.Popen("python " + args_str) #run main-crawling program
         if v == 2:
             try:
-                start_and_watch(data_dir, year, case_type, judge_type, args_str)
+                start_and_watch(data_dir, year, case_type, judge_type, pp)
             except Exception:
                 logger.exception('error !', exc_info=True)
             finally:
@@ -295,7 +302,7 @@ if __name__ == '__main__':
                 daemon_f.close()
         else:
             try:
-                start_and_watch(data_dir, year, case_type, judge_type, args_str)
+                start_and_watch(data_dir, year, case_type, judge_type, pp)
             except Exception as e:
                 logger.exception('error !', exc_info=e)
             finally:

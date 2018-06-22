@@ -4,7 +4,7 @@ import re
 import random
 
 
-XICI_PAGES = 5;
+XICI_PAGES = 6;
 PROXY_POOL_FILE = "proxy_availables.txt"
 PROXY_ABANDON_FILE = "proxy_abandons.txt"
 
@@ -133,6 +133,8 @@ class ProxyPool(object):
                     proxy_tmp[protocal + "://" + host + ":" + port] = self.__RETRIES
         sys.stdout.write("%d + %d = " %(len(self.proxies), len(proxy_tmp)))
         proxy_tmp.update(self.proxies)
+        for k in self.abandons.keys():
+            proxy_tmp.pop(k,1)
         self.proxies = proxy_tmp
         sys.stdout.write("%d\n" % len(self.proxies))
         sys.stdout.flush()

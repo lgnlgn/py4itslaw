@@ -2,7 +2,7 @@ import time
 import os
 import sys
 import gzip
-
+import traceback
 
 v = sys.version_info[0]
 
@@ -120,7 +120,7 @@ def get_resp(url, add_headers = {}, proxy = {}):
         proxy_support = ul.ProxyHandler(proxy)
         opener = ul.build_opener(proxy_support)
         ul.install_opener(opener)
-    return ul.urlopen(req, timeout=60)
+    return ul.urlopen(req, timeout=30)
 
 
 def request_with_proxy(url, add_headers = {}, proxy = {}):
@@ -129,9 +129,25 @@ def request_with_proxy(url, add_headers = {}, proxy = {}):
     return result
 
 
-def fetch_cookie(proxy = {}):
+def fetch_cookie(proxy_pool = None):
     headers = load_header()
-    resp = get_resp('https://www.itslaw.com/api/v1/users/user/loginInfo', headers, proxy= proxy)
+    if proxy_pool:
+        proxy = proxy_pool.get_random()
+        while proxy:
+            try:
+                resp = get_resp('https://www.itslaw.com/api/v1/users/user/loginInfo', headers, proxy= {'https':proxy})
+                proxy_pool.confirm_success(proxy)
+                sys.stdout.write(proxy + " ok!\n")
+                break
+            except Exception as e:
+                sys.stdout.write(proxy + " failed!\n")
+                sys.stdout.flush()
+                proxy_pool.confirm_fail(proxy)
+                print(e)
+                proxy = proxy_pool.get_random()
+
+    else:
+        resp = get_resp('https://www.itslaw.com/api/v1/users/user/loginInfo', headers)
     new_cookie = resp.info().get('set-cookie')
     old_cookie = headers['Cookie']
     sys.stdout.write("%s => %s\n" % (old_cookie, new_cookie))
