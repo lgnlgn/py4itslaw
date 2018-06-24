@@ -108,8 +108,8 @@ class ItslawRequester(object):
                     return result
                 except :
                     self.proxy_pool.confirm_fail(proxy)
-                time.sleep(2)
-                proxy = self.proxy_pool.get_random()
+                    time.sleep(2)
+                    proxy = self.proxy_pool.get_random()
 
         else:
             return request_with_proxy(url, heade) #raise exception out

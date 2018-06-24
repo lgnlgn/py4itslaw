@@ -1,23 +1,12 @@
+#coding=utf-8
 import time
 import os
-import sys
 import gzip
 import traceback
 
-v = sys.version_info[0]
-
-if v == 2:
-    from StringIO import StringIO
-    import urllib2 as ul
-else:
-    import urllib.request as ul
+from config_env import *
 
 
-
-header_file = 'headers.txt'
-
-LINES_PER_BLOCK = 500
-TIME_EXPIRE_SEC = 3600
 crawling_info = {'court_id': 0,'total_count': -1, 'finished_idx': 0, 'next_idx': 0, 'next_docid': '', 'next_area': '0'}
 
 
@@ -88,6 +77,7 @@ def read_info(working_dir, court_id):
 
 
 def current_progress(year_dir, case_type, judge_type):
+    """use by daemon's watching"""
     court_id = fetch_court(year_dir, case_type, judge_type)
     working_dir = "%s/%s_%s" % (year_dir, case_type, judge_type)
     info = read_info(working_dir, court_id)
@@ -124,9 +114,23 @@ def get_resp(url, add_headers = {}, proxy = {}):
 
 
 def request_with_proxy(url, add_headers = {}, proxy = {}):
-    resp = get_resp(url, add_headers, proxy)
-    result = decompress_response(resp)
-    return result
+    if proxy:
+        resp = get_resp(url, add_headers, proxy)
+        result = decompress_response(resp)
+        return result
+    else:
+        retries = NUM_RETRIES
+        while retries >= 0:
+            try:
+                resp = get_resp(url, add_headers, proxy)
+                result = decompress_response(resp)
+                return result
+            except :
+                sys.stdout.write("request_with_proxy error  #retris remaining: \n" %retries )
+                logger.error(" request_with_proxy error  #retris remaining:%s" %retries )
+                time.sleep(SLEEP_SEC)
+                retries -= 1
+        raise IOError
 
 
 def fetch_cookie(proxy_pool = None):
@@ -139,11 +143,11 @@ def fetch_cookie(proxy_pool = None):
                 proxy_pool.confirm_success(proxy)
                 sys.stdout.write(proxy + " ok!\n")
                 break
-            except Exception as e:
+            except :
                 sys.stdout.write(proxy + " failed!\n")
                 sys.stdout.flush()
                 proxy_pool.confirm_fail(proxy)
-                print(e)
+                traceback.print_exc()
                 proxy = proxy_pool.get_random()
 
     else:

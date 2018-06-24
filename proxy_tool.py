@@ -65,6 +65,7 @@ class ProxyPool(object):
     proxies = {}
     abandons = {}
     proxy_crawl_pages = XICI_PAGES;
+    ok_proxy = None
 
     def __init__(self, proxy_crawl_pages = XICI_PAGES):
         if os.path.isfile(PROXY_POOL_FILE)    and time.time() - os.path.getmtime(PROXY_POOL_FILE) < 7200:
@@ -74,6 +75,8 @@ class ProxyPool(object):
         self.proxy_crawl_pages = proxy_crawl_pages
 
     def get_random(self):
+        if self.ok_proxy :
+            return self.ok_proxy
         timec = time.time()
         abandons1 = len(self.abandons)
         self.abandons = dict([k for k in self.abandons.items() if timec - k[1] > 56400]) #refresh
@@ -89,9 +92,12 @@ class ProxyPool(object):
     def confirm_success(self, p):
         self.abandons.pop(p, 1)
         self.proxies[p] = self.__RETRIES
+        self.ok_proxy = p
+
 
     def confirm_fail(self, p):
         self.proxies[p] -= 1
+        self.ok_proxy = None
         if self.proxies[p] == 0:
             sys.stdout.write(p + " fail\n")
             sys.stdout.flush()

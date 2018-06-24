@@ -4,59 +4,37 @@ import subprocess
 import json
 import atexit
 import platform
-import logging
-#import traceback
+
 
 from proxy_tool import *
-#from utils import *
-
 from Request import ItslawRequester
 from optparse import OptionParser
 
 
 data_dir = os.getcwd()
 os.chdir(data_dir)
-NUM_TO_SLEEP = 100
-SLEEP_SEC = 10
-
-year = 2015
-case_type=2
-judge_type=1
-crawling_info = {'court_id': 0,'total_count': -1, 'finished_idx': 0, 'next_idx': 0, 'next_docid': '', 'next_area': '0'}
-verbose = True
-interval = 1000
-poweroff = False
 
 
-logger = logging.getLogger("itslaw_crawler")
-formatter = logging.Formatter('%(asctime)s %(levelname)-8s: %(message)s')
-
-usage = "main.py [-y <year>][-t <caseType>][-j <judgeType>][-d [dir]][-s [courtStart]][-e [courtEnd]][-v]"
+usage = "main.py [-y <year>][-t <caseType>][-j <judgeType>][-d [dir]][-v][-p][-s]"
 parser= OptionParser(usage)
 # 文件日志
 
-proxy_enable = False
-
 
 def parse_argv():
-
     parser.add_option("-d", "--dir",action="store", metavar="DIR",type="string", dest="data_dir", help="data directory for saving [default = .]")
     parser.add_option("-v", action="store_true", dest="verbose", default=False, help="set it to print crawling detail")
     parser.add_option("-y","--year",action = "store",type="int",dest = "year", metavar="YEAR",  help="set year, e.g. 2015")
     parser.add_option("-t","--case",action = "store", type="choice",dest = "case_type", choices = ['1','2','3','4'], metavar="CASETYPE",  help=u"set caseType, in [1,2,3,4], 民事刑事行政执行")
     parser.add_option("-j","--judge",action = "store", type="choice",dest = "judge_type", choices = ['1','2','3','4','5'], metavar="JUDGETYPE",  help=u"set judgeType, in [1,2,3,4,5], 判决裁定通知决定调解")
     parser.add_option("-p", "--proxy", action="store_true", dest="proxy", default=False, help="set it to enable proxy")
-
-    # parser.add_option("-s","--start",action = "store",default = 1,type="int",dest = "court_start", metavar="COURT_START" ,help="set court_id STARTS from max(COURT_START, already_done), [default = 1] ")
-    # parser.add_option("-e","--end",action = "store", default = 3568, type="int",dest = "court_end", metavar="COURT_END", help="set court_id ENDS from , [default = 3568]")
     parser.add_option("-i","--interval",action = "store", default = 1000, type="int",dest = "interval", metavar="INTERVAL", help="set crawling INTERVAL ms , [default = 1000]")
     parser.add_option("-s","--shutdown",action = "store_true",dest = "poweroff", default=False, help="set it to poweroff whether task finished or interupted")
 
     if len(sys.argv) == 1:
         parser.print_help()
 
-    global verbose, data_dir, year, case_type, judge_type, interval, poweroff
-    global proxy_enable
+    global verbose, data_dir, year, case_type, judge_type, interval, poweroff, proxy_enable
+
     (options, args) = parser.parse_args()
     case_type = options.case_type
     year = options.year
@@ -92,51 +70,13 @@ def debug_args(exit0=True):
         sys.exit(0)
 
 
-def main():
-
-    working_dir = data_dir + os.sep + str(year) + os.sep + case_type + "_" + judge_type
-    year_dir = data_dir + os.sep + str(year)
-    file_handler = logging.FileHandler(data_dir + os.sep + "log.log")
-    file_handler.setFormatter(formatter)  # 可以通过setFormatter指定输出格式
-    logger.addHandler(file_handler)
-
-    logger.info("starting")
-
-    if not os.path.isdir(working_dir):
-        os.makedirs(working_dir)
-
-    spider = ItslawRequester(year, case_type, judge_type, proxy_enable)
-
-    crawl_courts(data_dir, year, case_type, judge_type, spider)
-
-    court_id = fetch_court( year_dir, case_type, judge_type)
-    while court_id != 0:  # we will use a court-mapping in the future
-        dir_info = read_info(working_dir, court_id)
-        if dir_info is None or dir_info['next_docid'] == '-': #just new or re-crawl-task
-            dir_info = prepare_crawl(spider, court_id)  # get list
-            flush_info(working_dir, dir_info, True)
-        sys.stdout.write('now :%s\n'%court_id)
-        continue_crawl(spider, dir_info, working_dir)           # continue crawling from info
-        save_courts(year_dir, case_type, judge_type, dir_info, True)
-
-        court_id = fetch_court(year_dir, case_type, judge_type)
-
-
 def crawl_courts(data_dir, year, case_type, judge_type, spider):
     year_dir = data_dir + os.sep + str(year)
     court_id = fetch_court(year_dir, case_type, judge_type, goto_end =True)
     while court_id < 3569:
         court_id += 1
-        try:
-            ts = int(time.time() * 1000)
-            info = prepare_crawl(spider, court_id)
-            save_courts(year_dir, case_type, judge_type, info)
-            ii = int(time.time() * 1000) - ts
-            time.sleep(0 if ii > interval else (interval - ii) / 1000.0)  # sleep a while
-        except Exception:
-            sys.stdout.write("prepare_crawl :%d error: redo\n" % court_id)
-            time.sleep(5)
-            court_id -= 1
+        info = prepare_crawl(spider, court_id)
+        save_courts(year_dir, case_type, judge_type, info)
 
     ncourts = [3569, 3647, 3690, 3691]
     while ncourts.index( court_id) < len(ncourts) - 1 :
@@ -151,24 +91,12 @@ def continue_crawl(spider, info, working_dir):
     total_count = info['total_count']
     next_docid = info['next_docid']
     next_area = info['next_area']
-    retries = 2
     crawled_num = 0
     while True:  # do not use totalCount for boundary
         ts = int(time.time() * 1000)
-        try:
-            content = spider.get_detail(next_idx, total_count, court_id, next_area, next_docid)
-            crawled_num += 1
-            retries = 2
-        except:
-            sys.stderr.write(" get_detail error####### remaining: %d retries\n" %retries)
-            logger.exception(" get_detail error####### remaining: %d retries\n" %retries)
-            time.sleep(SLEEP_SEC)
-            if retries:
-                retries -= 1
-                continue  # re-crawl if http exception
-            else:
-                logger.exception(" spider fetch error")
-                raise RuntimeError(' spider fetch error !!%d '%retries)
+
+        content = spider.get_detail(next_idx, total_count, court_id, next_area, next_docid)
+        crawled_num += 1
 
         doc = json.loads(content)
         write_down(working_dir + os.sep + str(court_id), content, next_idx)
@@ -196,7 +124,6 @@ def continue_crawl(spider, info, working_dir):
         ii = int(time.time() * 1000) - ts
         time.sleep(0 if ii > interval else (interval - ii)/1000.0)  # sleep a while
     #finished
-
 
 
 def prepare_crawl(spider, court_id):
@@ -263,6 +190,35 @@ def mkdirs(*auguments):
     for p in paths :
         if not os.path.isdir(p):
             os.mkdir(p)
+
+
+def main():
+    working_dir = data_dir + os.sep + str(year) + os.sep + case_type + "_" + judge_type
+    year_dir = data_dir + os.sep + str(year)
+
+    file_handler = logging.FileHandler(data_dir + os.sep + "log.log")
+    file_handler.setFormatter(formatter)  # 可以通过setFormatter指定输出格式
+    logger.addHandler(file_handler)
+    logger.info("starting")
+
+    if not os.path.isdir(working_dir):
+        os.makedirs(working_dir)
+
+    spider = ItslawRequester(year, case_type, judge_type, proxy_enable)
+
+    crawl_courts(data_dir, year, case_type, judge_type, spider)  # crawl COURT_LIST first
+
+    court_id = fetch_court(year_dir, case_type, judge_type)
+    while court_id != 0:  # from COURT_LIST
+        dir_info = read_info(working_dir, court_id)
+        if dir_info is None or dir_info['next_docid'] == '-' or dir_info['next_idx'] == 0:  # just new or re-crawl-task
+            dir_info = prepare_crawl(spider, court_id)  # get list
+            flush_info(working_dir, dir_info, True)
+        sys.stdout.write('now :%s\n' % court_id)
+        continue_crawl(spider, dir_info, working_dir)  # continue crawling from info
+        save_courts(year_dir, case_type, judge_type, dir_info, True)
+
+        court_id = fetch_court(year_dir, case_type, judge_type)
 
 if __name__ == '__main__':
 
