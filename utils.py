@@ -126,7 +126,7 @@ def request_with_proxy(url, add_headers = {}, proxy = {}):
                 result = decompress_response(resp)
                 return result
             except :
-                sys.stdout.write("request_with_proxy error  #retris remaining: \n" %retries )
+                sys.stdout.write("request_with_proxy error  #retris remaining:%s\n" %retries )
                 logger.error(" request_with_proxy error  #retris remaining:%s" %retries )
                 time.sleep(SLEEP_SEC)
                 retries -= 1
