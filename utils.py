@@ -202,9 +202,11 @@ def fetch_court(year_dir, case_type, judge_type, goto_end = False):
         f = open(courts_file, 'w')
         f.close()
     f = open(courts_file)
+    all_courts = f.read().strip().split('\n')
+    f.close()
     last_court = ''
-    for line in f:
-        court_id, fi, tc, ratio, fh = line.split()
+    for line in all_courts:
+        court_id, fi, tc, ratio, fh = line.strip().split()
         # court_id, fi, tc, ratio,fh =
         last_court = court_id
         if fh == '0' and not tc == '0' and not goto_end:
@@ -218,4 +220,5 @@ def fetch_court(year_dir, case_type, judge_type, goto_end = False):
 
 
 if __name__ == '__main__':
-    fetch_cookie()
+    #fetch_cookie()
+    fetch_court('d:/itslaw_data/2014', '2','1')

@@ -219,6 +219,8 @@ def main():
         save_courts(year_dir, case_type, judge_type, dir_info, True)
 
         court_id = fetch_court(year_dir, case_type, judge_type)
+    sys.stdout.write('finish!!!!!')
+    sys.stdout.flush()
 
 if __name__ == '__main__':
 
@@ -250,12 +252,14 @@ if __name__ == '__main__':
         if v == 2:
             try:
                 start_and_watch(data_dir, year, case_type, judge_type, pp)
-            except Exception:
-                logger.exception('error !', exc_info=True)
+            except Exception, e:
+                traceback.print_exc()
+                logger.exception('error !')
             finally:
                 logger.warning("KeyboardInterrupt")
-                crawl_proc.kill()
                 daemon_f.close()
+                crawl_proc.kill()
+
         else:
             try:
                 start_and_watch(data_dir, year, case_type, judge_type, pp)
@@ -263,8 +267,8 @@ if __name__ == '__main__':
                 logger.exception('error !', exc_info=e)
             finally:
                 logger.warning("KeyboardInterrupt")
-                crawl_proc.kill()
                 daemon_f.close()
+                crawl_proc.kill()
 
 
 

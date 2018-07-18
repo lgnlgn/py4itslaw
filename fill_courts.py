@@ -28,4 +28,4 @@ def fill_courts(yeardir, cj):
     f.close()
 
 if __name__ == '__main__':
-    fill_courts(r'D:\itslaw_data\2015', '2_1')
+    fill_courts(r'D:\itslaw_data\2014', '2_1')
