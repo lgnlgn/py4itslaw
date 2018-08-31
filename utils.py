@@ -209,7 +209,7 @@ def fetch_court(year_dir, case_type, judge_type, goto_end = False):
         court_id, fi, tc, ratio, fh = line.strip().split()
         # court_id, fi, tc, ratio,fh =
         last_court = court_id
-        if fh == '0' and not tc == '0' and not goto_end:
+        if fh == '0'  and not goto_end:
             return int(last_court)
     f.close()
     if last_court and goto_end: #for the crawl_courts()

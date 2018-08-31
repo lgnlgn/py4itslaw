@@ -99,6 +99,11 @@ def continue_crawl(spider, info, working_dir):
         crawled_num += 1
 
         doc = json.loads(content)
+        if doc['result']['code'] != 0:
+            sys.stdout.write(doc['result']['message']+ "\n" )
+            sys.stdout.flush()
+            time.sleep(2)
+            continue
         write_down(working_dir + os.sep + str(court_id), content, next_idx)
 
         next_docid = doc['data']['fullJudgement'].get('nextId')
@@ -122,6 +127,7 @@ def continue_crawl(spider, info, working_dir):
             sys.stdout.write("sleep a while & update local header!\n")
             time.sleep(SLEEP_SEC)
         ii = int(time.time() * 1000) - ts
+
         time.sleep(0 if ii > interval else (interval - ii)/1000.0)  # sleep a while
     #finished
 
@@ -215,7 +221,8 @@ def main():
             dir_info = prepare_crawl(spider, court_id)  # get list
             flush_info(working_dir, dir_info, True)
         sys.stdout.write('now :%s\n' % court_id)
-        continue_crawl(spider, dir_info, working_dir)  # continue crawling from info
+        if dir_info['next_idx'] > 0:
+            continue_crawl(spider, dir_info, working_dir)  # continue crawling from info
         save_courts(year_dir, case_type, judge_type, dir_info, True)
 
         court_id = fetch_court(year_dir, case_type, judge_type)
@@ -252,7 +259,7 @@ if __name__ == '__main__':
         if v == 2:
             try:
                 start_and_watch(data_dir, year, case_type, judge_type, pp)
-            except Exception, e:
+            except Exception:
                 traceback.print_exc()
                 logger.exception('error !')
             finally:
