@@ -81,6 +81,7 @@ def current_progress(year_dir, case_type, judge_type):
     court_id = fetch_court(year_dir, case_type, judge_type)
     working_dir = "%s/%s_%s" % (year_dir, case_type, judge_type)
     info = read_info(working_dir, court_id)
+    info = time.time() if info is None else info
     return str(info)
 
 
@@ -203,6 +204,8 @@ def fetch_court(year_dir, case_type, judge_type, goto_end = False):
         f.close()
     f = open(courts_file)
     all_courts = f.read().strip().split('\n')
+    if len(all_courts) == 1 and all_courts[0] == '':
+        all_courts.remove('')
     f.close()
     last_court = ''
     for line in all_courts:

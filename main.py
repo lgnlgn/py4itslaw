@@ -77,7 +77,7 @@ def crawl_courts(data_dir, year, case_type, judge_type, spider):
         court_id += 1
         info = prepare_crawl(spider, court_id)
         save_courts(year_dir, case_type, judge_type, info)
-
+        time.sleep(0.5)
     ncourts = [3569, 3647, 3690, 3691]
     while ncourts.index( court_id) < len(ncourts) - 1 :
         court_id = ncourts[ncourts.index( court_id) + 1]
