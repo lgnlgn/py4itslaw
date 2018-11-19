@@ -178,7 +178,7 @@ def save_courts(year_dir, case_type, judge_type, info, update = False):
                 sys.stdout.flush()
                 break
         info_here[1] = str(info['finished_idx'])
-        info_here[4] = '1'
+        info_here[4] = time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime())
         info_here[3] = "%.3f" % ((info['finished_idx'] if info['finished_idx'] > 0 else 0) / (float(info_here[2]) + 0.00000000000001))
         lines[idx] = '\t'.join(info_here)
         f.close()
