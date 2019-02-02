@@ -124,8 +124,8 @@ def continue_crawl(spider, info, working_dir):
 
         next_idx += 1
         if crawled_num % NUM_TO_SLEEP == 0:
-            sys.stdout.write("sleep a while & update local header!\n")
-            time.sleep(SLEEP_SEC)
+            sys.stdout.write("sleep a while & update local header! current court:%d\n" % court_id)
+            time.sleep(SLEEP_SEC / 2)
         ii = int(time.time() * 1000) - ts
 
         time.sleep(0 if ii > interval else (interval - ii)/1000.0)  # sleep a while
@@ -133,21 +133,29 @@ def continue_crawl(spider, info, working_dir):
 
 
 def prepare_crawl(spider, court_id):
-    list_result = spider.get_list(court_id)
-    doc = json.loads(list_result)
-    total_count = doc['data']['searchResult']['totalCount']
-    page_area = doc['data']['searchResult']['pageArea']
-    if total_count != 0:
-        first = doc['data']['searchResult']['judgements'][0]
-        info = {'next_docid': first['id'], 'next_idx': 1 }
-    else:
-        info = {'next_docid': '', 'next_idx': 0 }
-    info['court_id'] = court_id
-    info['finished_idx'] = 0
-    info['total_count'] = total_count
-    info['next_area'] = page_area
-    logger.info(" \tcourt:%d  get_list : total count=>%d\n"%(court_id, total_count))
-    return info
+    while True:
+        list_result = spider.get_list(court_id)
+
+        try:
+            doc = json.loads(list_result)
+            total_count = doc['data']['searchResult']['totalCount']
+            page_area = doc['data']['searchResult']['pageArea']
+            if total_count != 0:
+                first = doc['data']['searchResult']['judgements'][0]
+                info = {'next_docid': first['id'], 'next_idx': 1}
+            else:
+                info = {'next_docid': '', 'next_idx': 0}
+            info['court_id'] = court_id
+            info['finished_idx'] = 0
+            info['total_count'] = total_count
+            info['next_area'] = page_area
+            logger.info(" \tcourt:%d  get_list : total count=>%d\n" % (court_id, total_count))
+            return info
+        except Exception as e:
+            print("error parse doc:", doc)
+            time.sleep(0.5)
+            continue
+
 
 
 def shutdown():
@@ -214,12 +222,12 @@ def main():
 
     crawl_courts(data_dir, year, case_type, judge_type, spider)  # crawl COURT_LIST first
 
-    court_id = fetch_court(year_dir, case_type, judge_type)
+    court_id = fetch_court(year_dir, case_type, judge_type) #fetch again; 0 if meets the end
     while court_id != 0:  # from COURT_LIST
         dir_info = read_info(working_dir, court_id)
-        if dir_info is None or dir_info['next_docid'] == '-' or dir_info['next_idx'] == 0:  # just new or re-crawl-task
-            dir_info = prepare_crawl(spider, court_id)  # get list
-            flush_info(working_dir, dir_info, True)
+        if dir_info is None or dir_info['next_docid'] == '-' or dir_info['next_idx'] == 0:  # just new or re-crawl-task( finished but 0 manually. )
+            dir_info = prepare_crawl(spider, int(court_id))  # get list
+            flush_info(working_dir, dir_info, delete = True)
         sys.stdout.write('now :%s\n' % court_id)
         if dir_info['next_idx'] > 0:
             continue_crawl(spider, dir_info, working_dir)  # continue crawling from info

@@ -219,7 +219,7 @@ def fetch_court(year_dir, case_type, judge_type, goto_end = False):
         return int(last_court)
     elif last_court:  # for courtid boundary fetch
         return 0
-    return 1 # not inited
+    return 0 # not inited
 
 
 if __name__ == '__main__':
